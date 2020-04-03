@@ -1,0 +1,4 @@
+# CLEVR basic dataset
+data/clevr_no_image
+# CLEVR Humans
+data/clevr_humans

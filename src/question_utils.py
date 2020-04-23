@@ -485,8 +485,8 @@ def instantiate_templates_dfs(scene_struct, template, metadata, answer_counts,
     answers.append(state['answer'])
     text = random.choice(template['text'])
     for name, val in state['vals'].items():
-      # if val in synonyms:
-      #   val = random.choice(synonyms[val])
+      if val in synonyms:
+        val = random.choice(synonyms[val])
       text = text.replace(name, val)
       text = ' '.join(text.split())
     text = replace_optionals(text)

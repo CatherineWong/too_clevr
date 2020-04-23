@@ -6,6 +6,7 @@ import time
 import re
 import question_engine as qeng
 import question_utils as qutils
+from collections import defaultdict, Counter
 
 parser = argparse.ArgumentParser()
 
@@ -14,13 +15,16 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--question_templates', default='None',
                     nargs='*',
                     help='Which question templates to generate for.')
-parser.add_argument('--instances_per_template', default=1, type=int,
+parser.add_argument('--instances_per_template', default=5, type=int,
     help="The number of times each template should be instantiated.")
-parser.add_argument('--n_scenes_per_question', default=3, type=int,
+parser.add_argument('--n_scenes_per_question', default=4, type=int,
     help="The number of scenes that serve as examples for each image.")
 parser.add_argument('--no_boolean', default=1, type=int, help='Whether to remove boolean questions from the dataset.')
 
 # File handling.
+parser.add_argument('--output_questions_file', default='data/clevr_dreams/questions/CLEVR_train_questions_1000.json',
+    help="JSON file containing ground-truth scene information for all images " +
+         "from render_images.py")
 parser.add_argument('--input_scene_file', default='data/clevr_dreams/scenes/CLEVR_train_scenes_1000.json',
     help="JSON file containing ground-truth scene information for all images " +
          "from render_images.py")
@@ -80,132 +84,37 @@ def instantiate_templates_dfs(
                 answer_counts,
                 max_instances=None,
                 n_scenes_per_question=None):
-    text_questions, structured_questions, answers = [], [], []
     
-    # Hacky -- just try instantiating all of the templates for a given set of scenes.
-    initial_scenes = random.sample(all_scenes,n_scenes_per_question)
-    ts, qs, ans = qutils.instantiate_templates_dfs(
-                    initial_scenes[0],
-                    template,
-                    metadata,
-                    answer_counts,
-                    synonyms=[],
-                    max_instances=None,
-                    verbose=False)
-    import pdb; pdb.set_trace()
+    text_questions = defaultdict(list)
     
-    param_name_to_type = {p['name']: p['type'] for p in template['params']} 
-    initial_scenes = random.sample(all_scenes,n_scenes_per_question)
-    initial_state = {
-      'nodes': [qutils.node_shallow_copy(template['nodes'][0])],
-      'vals': { i: {} for (i, _) in enumerate(initial_scenes)},
-      'input_map': { i: {0:0} for (i, _) in enumerate(initial_scenes)},
-      'next_template_node': 1,
-      'scenes' : { i: s for (i, s) in enumerate(initial_scenes)}
-    }
-    states = [initial_state]
-    final_states = []
-    while states:
-      state = states.pop()
-      
-      # Evaluate the current state on all of the scenes.
-      q = {'nodes': state['nodes']}
-      outputs = {i : qeng.answer_question(q, metadata, state['scenes'][i], all_outputs=True, cache_outputs=False) for i in state['scenes']}
-      answers = {i : outputs[i][-1] for i in outputs}
-      new_scenes = {
-        i : state['scenes'][i]
-        for i in state['scenes'] if outputs[i][-1] != '__INVALID__'
-      }
-      if len(new_scenes) == 0: continue
-      state['scenes'] = new_scenes
-      
-      # Check to make sure constraints are satisfied for the current state on all the vals.
-      fails_constraints = {scene_idx : check_constraints(param_name_to_type, template, state, outputs, scene_idx) for scene_idx in state['scenes']}
-     
-      new_scenes = {
-        i : state['scenes'][i]
-        for i in state['scenes'] if not fails_constraints[i]
-      }
-      if len(new_scenes) == 0: continue
-      state['scenes'] = new_scenes
-      
-      # We have already checked to make sure the answer is valid, so if we have
-      # processed all the nodes in the template then the current state is a valid
-      # question, so add it if it passes our rejection sampling tests.
-      if state['next_template_node'] == len(template['nodes']):
-        # TODO: add back in the template count satisfaction criteria.
-
-        # If the template contains a raw relate node then we need to check for
-        # degeneracy at the end
-        has_relate = any(n['type'] == 'relate' for n in template['nodes'])
-        if has_relate:
-            degen = {i : qeng.is_degenerate(q, metadata, state['scenes'][i], answer=answers[i]) for i in state['scenes']}
-            new_scenes = {
-              i : state['scenes'][i]
-              for i in state['scenes'] if not degen[i]
-            }
-            if len(new_scenes) == 0: continue
-            state['scenes'] = new_scenes
-        state['answers'] = answers
-        final_states.append(state)
-        if max_instances is not None and len(final_states) == max_instances:
-          break
-        continue
+    scenes_per_q = Counter()
+    random.shuffle(all_scenes)
+    # Just try instantiating the questions for a set of scenes.
+    for s in all_scenes:
+        ts, qs, ans = qutils.instantiate_templates_dfs(
+                        s,
+                        template,
+                        metadata,
+                        answer_counts,
+                        synonyms=[],
+                        max_instances=1000,
+                        verbose=False)
+        for i, tq in enumerate(ts):
+            text_questions[tq].append((s, qs[i], ans[i])) 
+        
+        scenes_per_q.update(ts)
+        valid_qs = [q for q, count in scenes_per_q.items() if count >= n_scenes_per_question] 
+        if len(valid_qs) >= max_instances:
+            break
     
-      # Get the next node from the template.
-      next_node = template['nodes'][state['next_template_node']]
-      next_node = qutils.node_shallow_copy(next_node)
-      special_nodes = {
-          'filter_unique', 'filter_count', 'filter_exist', 'filter',
-          'relate_filter', 'relate_filter_unique', 'relate_filter_count',
-          'relate_filter_exist',
-      }
-      # Calculate filter options across the scenes.
-      filter_options = {}
-      if next_node['type'] in special_nodes:
-          for i in state['scenes']:
-            if next_node['type'].startswith('relate_filter'):
-              unique = (next_node['type'] == 'relate_filter_unique')
-              include_zero = (next_node['type'] == 'relate_filter_count'
-                              or next_node['type'] == 'relate_filter_exist')
-              for k, v in qutils.find_relate_filter_options(answers[i], state['scenes'][i], metadata ,unique=unique, include_zero=include_zero).items():
-                if k not in filter_options: filter_options[k] = dict()
-                filter_options[k][i] = v
-            else:
-              initial_filter_options = qutils.find_filter_options(answers[i], state['scenes'][i], metadata) 
-              if next_node['type'] == 'filter':
-                # Remove null filter
-                for i in filter_options:
-                    initial_filter_optionss[i].pop((None, None, None, None), None)
-              if next_node['type'] == 'filter_unique':
-                # Get rid of all filter options that don't result in a single object
-                initial_filter_options = {k: v for k, v in initial_filter_options.items()
-                                  if len(v) == 1}
-              else:
-                # Add some filter options that do NOT correspond to the scene
-                if next_node['type'] == 'filter_exist':
-                  # For filter_exist we want an equal number that do and don't
-                  num_to_add = len(initial_filter_options)
-                elif next_node['type'] == 'filter_count' or next_node['type'] == 'filter':
-                  # For filter_count add nulls equal to the number of singletons
-                  num_to_add = sum(1 for k, v in initial_filter_options.items() if len(v) == 1)
-                initial_filter_options = qutils.add_empty_filter_options(initial_filter_options, metadata, num_to_add)
-            for k, v in initial_filter_options.items():
-                if k not in filter_options: filter_options[k] = dict()
-                filter_options[k][i] = v
-          
-          # Find filter option keys that are valid across multiple scenes.
-          filter_option_keys = list(filter_options.keys())
-          random.shuffle(filter_option_keys)
-          for k in filter_option_keys:
-            new_nodes = []
-            for scene_idx in filter_option_keys[k]:
-                cur_next_vals = {k: v for k, v in state['vals'][scene_idx].items()}
-                next_input = state['input_map'][scene_idx][next_node['inputs'][0]]
-                filter_side_inputs = next_node['side_inputs']
-            
-
-    return text_questions, structured_questions, answers
+    # Try to get a range of questions.
+    # Randomly sample among the question in valid qs.
+    final_qs = random.sample(valid_qs, max_instances)
+    text_questions = {
+        q : random.sample(text_questions[q], n_scenes_per_question)
+        for q in final_qs
+    } 
+    return text_questions
 
 def main(args):
     with open(args.metadata_file, 'r') as f:
@@ -276,14 +185,47 @@ def main(args):
     templates_items = list(templates.items())
     for i, ((fn, idx), template) in enumerate(templates_items):
         print(f'trying template {fn} {idx} : {i}/{len(templates_items)}') 
-        ts, qs, ans = instantiate_templates_dfs(
+        ts = instantiate_templates_dfs(
                         all_scenes,
                         template,
                         metadata,
                         template_answer_counts[(fn, idx)],
                         max_instances=args.instances_per_template,
                         n_scenes_per_question=args.n_scenes_per_question)
-                        
+        for t in ts:
+            scenes, programs, answers = [spa[0] for spa in ts[t]], [spa[1] for spa in ts[t]], [spa[-1] for spa in ts[t]]
+            scene_fns = [scene['image_filename'] for scene in scenes]
+            img_indices = [int(os.path.splitext(scene_fn)[0].split('_')[-1]) for scene_fn in scene_fns]
+            
+            # Fix the programs as per the original code.
+            for p in programs:
+                for f in p:
+                  if 'side_inputs' in f:
+                    f['value_inputs'] = f['side_inputs']
+                    del f['side_inputs']
+                  else:
+                    f['value_inputs'] = []
+            
+            questions.append({
+                'split': scene_info['split'],
+                'question': t,
+                'template_filename': fn,
+                'question_family_index': idx,
+                'question_index': len(questions),
+                'image_filenames' : scene_fns,
+                'image_indices' : img_indices,
+                'answers' : answers,
+                'program' : programs
+            })
+    
+    print(f"Generated {len(questions)} questions!")
+    with open(args.output_questions_file, 'w') as f:
+      print('Writing output to %s' % args.output_questions_file)
+      json.dump({
+          'info': scene_info,
+          'questions': questions,
+        }, f)
+        
 
 if __name__ == '__main__':
   args = parser.parse_args()

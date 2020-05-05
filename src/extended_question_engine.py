@@ -24,21 +24,21 @@ def make_filter_handler(attribute):
     for obj in inputs[0]:
       atr = obj[attribute]
       if value == atr or value in atr:
-        output.append(idx)
+        output.append(obj)
     return output
   return filter_handler
   
 def make_transform_handler(attribute):
-    # Transform objects in Y that appear in X to have attribute A
+    # Transform object IDs in Y that appear in X to have attribute A
     def transform_handler(scene_struct, inputs, side_inputs):
       assert len(inputs) == 2
       assert len(side_inputs) == 1
       value = side_inputs[0]
       output = copy.deepcopy(inputs[0])
       selection_ids = [obj['id'] for obj in inputs[1]]
-      for obj in inputs[0]:
-        if obj in selection_ids:
-            output[attribute] = value
+      for obj in output:
+        if obj['id'] in selection_ids:
+            obj [attribute] = value
       return output
     return transform_handler
     

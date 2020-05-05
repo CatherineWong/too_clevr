@@ -8,11 +8,27 @@ from collections import defaultdict, Counter
 def uniform_bernoulli_flip():
     return random.uniform(0, 1) > 0.5
 
-def build_filter_option(grouped_input_scenes, f, group, params, original_idx, curr_node_idx, new_node_idxs):
+def build_filter_option(grouped_input_scenes, f, constraints, group, params, original_idx, curr_node_idx, new_node_idxs):
     # Select a filter option from the grouped input scenes.
-    filter_option_idx = random.choice(list(grouped_input_scenes[group].keys()))
-    input_scenes = grouped_input_scenes[group][str(filter_option_idx)]
-    filter_options = input_scenes["filter_options"]
+    if "filter" not in constraints:
+        filter_option_idx = random.choice(list(grouped_input_scenes[group].keys()))
+        input_scenes = grouped_input_scenes[group][str(filter_option_idx)]
+        filter_options = input_scenes["filter_options"]
+    else:
+        param_to_type = {p['name'] : p['type'] for p in params}
+        # Directly search for a filter that meets the required constraints
+        if constraints["filter"] == "choose_exactly":
+            req_types = set([param_to_type[p] for p in f['side_inputs']])
+            key_options = []
+            for k in grouped_input_scenes[group]:
+                input_scenes = grouped_input_scenes[group][k]
+                filter_options = input_scenes["filter_options"]
+                filter_types = set([opt[0] for opt in filter_options])
+                if req_types == filter_types:
+                    key_options.append(k)
+            filter_option_idx = random.choice(key_options)
+            input_scenes = grouped_input_scenes[group][str(filter_option_idx)]
+            filter_options = input_scenes["filter_options"]
     
     filter_program = []
     for i, (attr_type, attr_value) in enumerate(filter_options):
@@ -77,11 +93,32 @@ def instantiate_question_text(template, params, constraints):
         instantiated_texts.append(instantiated_text)
     return instantiated_texts
 
-def build_instantiated_program_node(f, curr_node_idx, original_idx, new_node_idxs, params):
+def instantiate_param_random(param_name, metadata, params):
+    for p in params:
+        if p['name'] == param_name:
+            param_choices = set(metadata['types'][p['type']])
+            param_choice = random.choice(list(param_choices))
+            p['value'] = param_choice
+            return p['value']
+            
+def build_instantiated_program_node(f, metadata, curr_node_idx, original_idx, new_node_idxs, params):
     param_to_val = {p['name'] : p['value'] for p in params if 'value' in p}
+    
+    # Instantiate any unbound parameters.
+    if 'side_inputs' not in f:
+        side_inputs = []
+    else:
+        side_inputs = []
+        for param_name in f['side_inputs']:
+            if param_name in param_to_val:
+                side_inputs.append(param_to_val[param_name])
+            else:
+                # Instantiate any unbound parameters.
+                side_inputs.append(instantiate_param_random(param_name, metadata, params))
+    
     program =  [{
         "type" : f["type"],
-        "side_inputs" : [param_to_val[p] for p in f['side_inputs']] if 'side_inputs' in f else [],
+        "side_inputs" : side_inputs,
         "inputs" : [new_node_idxs[old_idx] for old_idx in f["inputs"]]
     }]
     new_node_idxs[original_idx] = len(program) + curr_node_idx - 1
@@ -105,17 +142,16 @@ def instantiate_template(
         if f['type'] == 'scene':
             program.append(f)
         elif f['type'] == 'filter':
-            filter_program, input_scenes = build_filter_option(grouped_input_scenes, f, template['group'], params, original_idx=original_idx, curr_node_idx=len(program), new_node_idxs=new_node_idxs)
+            filter_program, input_scenes = build_filter_option(grouped_input_scenes, f, template["constraints"], template['group'], params, original_idx=original_idx, curr_node_idx=len(program), new_node_idxs=new_node_idxs)
             program += filter_program
         elif f['type'] == 'transform':
             program += build_transform_option(f, template["constraints"], metadata, params, original_idx=original_idx, curr_node_idx=len(program), new_node_idxs=new_node_idxs)
         else:
-            program += build_instantiated_program_node(f, curr_node_idx=len(program), original_idx=original_idx, new_node_idxs=new_node_idxs, params=params)
+            program += build_instantiated_program_node(f, metadata, curr_node_idx=len(program), original_idx=original_idx, new_node_idxs=new_node_idxs, params=params)
             
     # Build the program text
     instantiated_text = instantiate_question_text(template, params, template["constraints"])
     if len(instantiated_text) < 1:
-        import pdb; pdb.set_trace()
         return [], None, None, None
     
     # Run the program on the scenes to generate the answers
@@ -124,7 +160,7 @@ def instantiate_template(
         input_scene = all_input_scenes[int(input_image_index)]
         ans = extended_qeng.answer_question(program, 
                                             metadata,
-                                            input_scene, all_outputs=True, cache_outputs=False)
+                                            input_scene, all_outputs=False, cache_outputs=False)
         answers.append(ans)
     return instantiated_text, program, input_scenes, answers
         
@@ -133,11 +169,12 @@ def instantiate_templates_extended(all_input_scenes,
                                    template,
                                    metadata,
                                    max_instances,
-                                   max_time=100):
+                                   max_time=100,
+                                   max_tries=1000):
     final_qs = []
     text_questions = set()
     tic = time.time()
-    while True:
+    for _ in range(max_tries):
         t, program, input_scenes, ans = instantiate_template(all_input_scenes,
                                            grouped_input_scenes,
                                            copy.deepcopy(template),
@@ -164,7 +201,7 @@ def instantiate_templates_extended(all_input_scenes,
         # if (toc - tic) > max_time:
         #     print("Out of time!")
         #     break     
-        if len(final_qs) > max_instances:
+        if len(final_qs) >= max_instances:
             break
     return final_qs
 
@@ -238,6 +275,7 @@ def main(args):
             q['template_filename'] = fn
             q['question_index'] = len(questions)
             questions.append(q)
+        print(f"Generated {len(instantiated_qs)} questions for that template.")
     
     print(f"Generated {len(questions)} questions!")
     with open(args.output_questions_file, 'w') as f:

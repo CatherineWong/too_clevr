@@ -29,6 +29,12 @@
       "terminal": false
     },
     {
+      "name": "remove",
+      "inputs": ["ObjectSet", "ObjectSet"],
+      "output": "ObjectSet",
+      "terminal": false
+    },
+    {
       "name": "transform",
       "inputs": ["ObjectSet", "ObjectSet"],
       "side_inputs": ["Size", "Color", "Material", "Shape"],

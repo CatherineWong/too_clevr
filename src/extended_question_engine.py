@@ -45,6 +45,17 @@ def make_transform_handler(attribute):
             obj [attribute] = value
       return output
     return transform_handler
+
+def remove_handler(scene_struct, inputs, side_inputs):
+    # Remove objects in Y from X
+    assert len(inputs) == 2
+    original = copy.deepcopy(inputs[0])
+    selection_ids = [obj['id'] for obj in inputs[1]]
+    outputs = []
+    for obj in original:
+        if obj["id"] not in selection_ids:
+            outputs.append(obj)
+    return outputs
     
 execute_handlers = {
   # CLEVR Extended
@@ -52,7 +63,7 @@ execute_handlers = {
   'transform_material': make_transform_handler('material'),
   'transform_size': make_transform_handler('size'),
   'transform_shape': make_transform_handler('shape'),
-  
+  'remove' : remove_handler,
 
   # CLEVR 1.0
   'scene': scene_handler,

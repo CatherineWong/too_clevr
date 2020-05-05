@@ -10,7 +10,7 @@ def uniform_bernoulli_flip():
 
 def build_filter_option(grouped_input_scenes, f, group, params, original_idx, curr_node_idx, new_node_idxs):
     # Select a filter option from the grouped input scenes.
-    filter_option_idx = random.randint(0, len(grouped_input_scenes[group]))
+    filter_option_idx = random.choice(list(grouped_input_scenes[group].keys()))
     input_scenes = grouped_input_scenes[group][str(filter_option_idx)]
     filter_options = input_scenes["filter_options"]
     
@@ -28,18 +28,16 @@ def build_filter_option(grouped_input_scenes, f, group, params, original_idx, cu
                 p['value'] = attr_value
     # Redirect anything that filtered from this node to filter from the final filter node.
     new_node_idxs[original_idx] = curr_node_idx + len(filter_program) - 1
-    # Redirect this node to be 
     return filter_program, input_scenes
 
-def build_transform_option(f, metadata, params, original_idx, curr_node_idx, new_node_idxs):
+def build_transform_option(f, constraints, metadata, params, original_idx, curr_node_idx, new_node_idxs):
     # Expand the transform into several params that have not yet been used.
-    # TODO -- fix the input index problem
     param_to_type = {p['name'] : p['type'] for p in params}
     transform_program = []
     while len(transform_program) < 1:
         for param in params: 
             if param['name'] in f['side_inputs']:
-                if uniform_bernoulli_flip():
+                if uniform_bernoulli_flip() or ("transform" in constraints and constraints["transform"] == "choose_all"):
                     used_param_vals = set([p['value'] for p in params if 'value' in p])
                     param_type = param_to_type[param['name']]
                     param_choices = set(metadata['types'][param_type]) - used_param_vals
@@ -61,12 +59,15 @@ def build_transform_option(f, metadata, params, original_idx, curr_node_idx, new
     new_node_idxs[original_idx] = len(transform_program) + curr_node_idx - 1
     return transform_program
 
-def instantiate_question_text(template, params):
+def instantiate_question_text(template, params, constraints):
     instantiated_texts = []
     for template_text in template['text']:
         instantiated_text = template_text
         for p in params:
             if 'value' not in p:
+                if p['name'] in constraints:
+                     # If we failed to instantiate one of the necessary values.
+                     return []
                 p_value = "" if p['type'] != 'Shape' else "thing"
             else:
                 p_value = p['value']
@@ -75,6 +76,17 @@ def instantiate_question_text(template, params):
         instantiated_text = " ".join(instantiated_text.split())
         instantiated_texts.append(instantiated_text)
     return instantiated_texts
+
+def build_instantiated_program_node(f, curr_node_idx, original_idx, new_node_idxs, params):
+    param_to_val = {p['name'] : p['value'] for p in params if 'value' in p}
+    program =  [{
+        "type" : f["type"],
+        "side_inputs" : [param_to_val[p] for p in f['side_inputs']] if 'side_inputs' in f else [],
+        "inputs" : [new_node_idxs[old_idx] for old_idx in f["inputs"]]
+    }]
+    new_node_idxs[original_idx] = len(program) + curr_node_idx - 1
+    return program
+    
 
 def instantiate_template(
     all_input_scenes,
@@ -96,12 +108,16 @@ def instantiate_template(
             filter_program, input_scenes = build_filter_option(grouped_input_scenes, f, template['group'], params, original_idx=original_idx, curr_node_idx=len(program), new_node_idxs=new_node_idxs)
             program += filter_program
         elif f['type'] == 'transform':
-            program += build_transform_option(f, metadata, params, original_idx=original_idx, curr_node_idx=len(program), new_node_idxs=new_node_idxs)
+            program += build_transform_option(f, template["constraints"], metadata, params, original_idx=original_idx, curr_node_idx=len(program), new_node_idxs=new_node_idxs)
         else:
-            assert False
+            program += build_instantiated_program_node(f, curr_node_idx=len(program), original_idx=original_idx, new_node_idxs=new_node_idxs, params=params)
             
     # Build the program text
-    instantiated_text = instantiate_question_text(template, params)
+    instantiated_text = instantiate_question_text(template, params, template["constraints"])
+    if len(instantiated_text) < 1:
+        import pdb; pdb.set_trace()
+        return [], None, None, None
+    
     # Run the program on the scenes to generate the answers
     answers = []
     for input_image_index in input_scenes['input_image_indexes']:
@@ -110,7 +126,6 @@ def instantiate_template(
                                             metadata,
                                             input_scene, all_outputs=True, cache_outputs=False)
         answers.append(ans)
-        
     return instantiated_text, program, input_scenes, answers
         
 def instantiate_templates_extended(all_input_scenes,
@@ -127,6 +142,7 @@ def instantiate_templates_extended(all_input_scenes,
                                            grouped_input_scenes,
                                            copy.deepcopy(template),
                                            metadata) 
+        if len(t) < 1: continue
         if t[0] not in text_questions:
             text_questions.update(t)
             # Fix the program as per the original code

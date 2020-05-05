@@ -14,6 +14,10 @@ in a JSON metadata file.
 def scene_handler(scene_struct, inputs, side_inputs):
   # Just return all objects in the scene
   return scene_struct['objects']
+ 
+def count_handler(scene_struct, inputs, side_inputs):
+    assert len(inputs) == 1
+    return len(inputs[0])
 
 def make_filter_handler(attribute):
   def filter_handler(scene_struct, inputs, side_inputs):
@@ -57,6 +61,7 @@ execute_handlers = {
   'filter_material': make_filter_handler('material'),
   'filter_size': make_filter_handler('size'),
   'filter_objectcategory': make_filter_handler('objectcategory'),
+  'count': count_handler,
 }
 
 

@@ -10,14 +10,15 @@ from collections import defaultdict, Counter
 
 parser = argparse.ArgumentParser()
 
+basics = ['1_zero_hop', '1_one_hop', '1_compare_integer', '1_single_and', '1_single_or', '1_same_relate']
 
 # Control the number of tasks we generate
-parser.add_argument('--question_templates', default='None',
+parser.add_argument('--question_templates', default=basics,
                     nargs='*',
                     help='Which question templates to generate for.')
-parser.add_argument('--instances_per_template', default=5, type=int,
+parser.add_argument('--instances_per_template', default=15, type=int,
     help="The number of times each template should be instantiated.")
-parser.add_argument('--n_scenes_per_question', default=4, type=int,
+parser.add_argument('--n_scenes_per_question', default=5, type=int,
     help="The number of scenes that serve as examples for each image.")
 parser.add_argument('--no_boolean', default=1, type=int, help='Whether to remove boolean questions from the dataset.')
 
@@ -83,14 +84,17 @@ def instantiate_templates_dfs(
                 metadata,
                 answer_counts,
                 max_instances=None,
-                n_scenes_per_question=None):
+                n_scenes_per_question=None,
+                max_time=100):
     
+    tic = time.time()
     text_questions = defaultdict(list)
     
     scenes_per_q = Counter()
     random.shuffle(all_scenes)
     # Just try instantiating the questions for a set of scenes.
-    for s in all_scenes:
+    for i, s in enumerate(all_scenes):
+        if i > 0 and i % 100 == 0: print(f"On scene [{i}/{len(all_scenes)}]")
         ts, qs, ans = qutils.instantiate_templates_dfs(
                         s,
                         template,
@@ -106,10 +110,14 @@ def instantiate_templates_dfs(
         valid_qs = [q for q, count in scenes_per_q.items() if count >= n_scenes_per_question] 
         if len(valid_qs) >= max_instances:
             break
+        toc = time.time()
+        if (toc - tic) > max_time:
+            print("Out of time!")
+            break
     
     # Try to get a range of questions.
     # Randomly sample among the question in valid qs.
-    final_qs = random.sample(valid_qs, max_instances)
+    final_qs = random.sample(valid_qs, min(max_instances, len(valid_qs)))
     text_questions = {
         q : random.sample(text_questions[q], n_scenes_per_question)
         for q in final_qs

@@ -274,6 +274,7 @@ def main(args):
             q['split'] = scene_info['split']
             q['template_filename'] = fn
             q['question_index'] = len(questions)
+            q['template_index'] = idx
             questions.append(q)
         print(f"Generated {len(instantiated_qs)} questions for that template.")
     

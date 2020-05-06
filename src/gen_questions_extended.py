@@ -161,6 +161,7 @@ def instantiate_template(
         ans = extended_qeng.answer_question(program, 
                                             metadata,
                                             input_scene, all_outputs=False, cache_outputs=False)
+    
         answers.append(ans)
     return instantiated_text, program, input_scenes, answers
         

@@ -10,17 +10,23 @@ from collections import defaultdict, Counter
 
 parser = argparse.ArgumentParser()
 
-basics = ['1_zero_hop', '1_one_hop', '1_compare_integer', '1_single_and', '1_single_or', '1_same_relate']
+basics = ['1_zero_hop', '1_one_hop', '1_compare_integer',  '1_single_or', '1_same_relate']
+
+# Template restrictions based on which questions can feasibly generate n inputs.
+template_restrictions = {
+    '1_single_or' : [0, 1, 2, 4, 5],
+    '1_compare_integer' : [0, 1, 2],
+}
 
 # Control the number of tasks we generate
 parser.add_argument('--question_templates', default=basics,
                     nargs='*',
                     help='Which question templates to generate for.')
-parser.add_argument('--instances_per_template', default=15, type=int,
+parser.add_argument('--instances_per_template', default=10, type=int,
     help="The number of times each template should be instantiated.")
 parser.add_argument('--n_scenes_per_question', default=5, type=int,
     help="The number of scenes that serve as examples for each image.")
-parser.add_argument('--no_boolean', default=1, type=int, help='Whether to remove boolean questions from the dataset.')
+parser.add_argument('--no_boolean', default=0, type=int, help='Whether to remove boolean questions from the dataset.')
 
 # File handling.
 parser.add_argument('--output_questions_file', default='data/clevr_dreams/questions/CLEVR_train_questions_1000.json',
@@ -143,12 +149,15 @@ def main(args):
     num_bool = 0
     templates = {}
     for fn in os.listdir(args.template_dir):
+      basename = os.path.basename(fn.split('.json')[0])
       if not fn.endswith('.json'): continue
-      if args.question_templates is not None and os.path.basename(fn.split('.json')[0]) not in args.question_templates:
+      if args.question_templates is not None and basename not in args.question_templates:
           continue
       with open(os.path.join(args.template_dir, fn), 'r') as f:
         base = os.path.splitext(fn)[0]
         for i, template in enumerate(json.load(f)):
+            if basename in template_restrictions:
+                if i not in template_restrictions[basename]: continue
             if bool(args.no_boolean) and template['nodes'][-1]['type'] in metadata['_boolean_fns']:
                 num_bool += 1
                 continue
@@ -218,7 +227,7 @@ def main(args):
                 'split': scene_info['split'],
                 'question': t,
                 'template_filename': fn,
-                'question_family_index': idx,
+                'template_index': idx,
                 'question_index': len(questions),
                 'image_filenames' : scene_fns,
                 'image_indices' : img_indices,

@@ -100,4 +100,13 @@ def answer_question(program, metadata, scene_struct, all_outputs=False,
     if all_outputs:
       return node_outputs
     else:
-      return node_outputs[-1]
+      # If it is a scene, build it back into a scene struct
+      if type(node_outputs[-1]) == list:
+          return_scene = {
+            'objects' : node_outputs[-1],
+            'relationships' : scene_struct['relationships'],
+            'directions' : scene_struct['directions'],
+          }
+          return return_scene
+      else:
+          return node_outputs[-1]

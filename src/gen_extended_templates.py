@@ -212,7 +212,7 @@ def main(args):
     with open(os.path.join(args.template_dir, fn + '.json'), 'w') as f:
         json.dump(questions, f)
     
-    fn = "2_transform_one_hop"
+    fn = "2_transform"
     questions = [
         {"text": ["What if the <Z> <C> <M> <S> became a <Z2> <C2> <M2> <S2>?"],
         "group": "unique",

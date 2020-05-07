@@ -1,0 +1,50 @@
+INDEX, 9,
+QUESTION,What if you removed all of the large brown rubber things?
+IMG_INPUT,CLEVR_train_2_remove_000009_input_0.png
+IMG_INPUT,CLEVR_train_2_remove_000009_input_1.png
+IMG_INPUT,CLEVR_train_2_remove_000009_input_2.png
+IMG_INPUT,CLEVR_train_2_remove_000009_input_3.png
+IMG_ANSWER,CLEVR_train_2_remove_000009_answer_0.png
+IMG_ANSWER,CLEVR_train_2_remove_000009_answer_1.png
+IMG_ANSWER,CLEVR_train_2_remove_000009_answer_2.png
+IMG_ANSWER,CLEVR_train_2_remove_000009_answer_3.png
+INDEX, 0,
+QUESTION,What if you removed all of the large purple metal cylinders?
+IMG_INPUT,CLEVR_train_2_remove_000000_input_0.png
+IMG_INPUT,CLEVR_train_2_remove_000000_input_1.png
+IMG_INPUT,CLEVR_train_2_remove_000000_input_2.png
+IMG_INPUT,CLEVR_train_2_remove_000000_input_3.png
+IMG_ANSWER,CLEVR_train_2_remove_000000_answer_0.png
+IMG_ANSWER,CLEVR_train_2_remove_000000_answer_1.png
+IMG_ANSWER,CLEVR_train_2_remove_000000_answer_2.png
+IMG_ANSWER,CLEVR_train_2_remove_000000_answer_3.png
+INDEX, 1,
+QUESTION,What if you removed all of the large yellow metal things?
+IMG_INPUT,CLEVR_train_2_remove_000001_input_0.png
+IMG_INPUT,CLEVR_train_2_remove_000001_input_1.png
+IMG_INPUT,CLEVR_train_2_remove_000001_input_2.png
+IMG_INPUT,CLEVR_train_2_remove_000001_input_3.png
+IMG_ANSWER,CLEVR_train_2_remove_000001_answer_0.png
+IMG_ANSWER,CLEVR_train_2_remove_000001_answer_1.png
+IMG_ANSWER,CLEVR_train_2_remove_000001_answer_2.png
+IMG_ANSWER,CLEVR_train_2_remove_000001_answer_3.png
+INDEX, 2,
+QUESTION,What if you removed all of the small rubber cylinders?
+IMG_INPUT,CLEVR_train_2_remove_000002_input_0.png
+IMG_INPUT,CLEVR_train_2_remove_000002_input_1.png
+IMG_INPUT,CLEVR_train_2_remove_000002_input_2.png
+IMG_INPUT,CLEVR_train_2_remove_000002_input_3.png
+IMG_ANSWER,CLEVR_train_2_remove_000002_answer_0.png
+IMG_ANSWER,CLEVR_train_2_remove_000002_answer_1.png
+IMG_ANSWER,CLEVR_train_2_remove_000002_answer_2.png
+IMG_ANSWER,CLEVR_train_2_remove_000002_answer_3.png
+INDEX, 4,
+QUESTION,What if you removed all of the small brown rubber things?
+IMG_INPUT,CLEVR_train_2_remove_000004_input_0.png
+IMG_INPUT,CLEVR_train_2_remove_000004_input_1.png
+IMG_INPUT,CLEVR_train_2_remove_000004_input_2.png
+IMG_INPUT,CLEVR_train_2_remove_000004_input_3.png
+IMG_ANSWER,CLEVR_train_2_remove_000004_answer_0.png
+IMG_ANSWER,CLEVR_train_2_remove_000004_answer_1.png
+IMG_ANSWER,CLEVR_train_2_remove_000004_answer_2.png
+IMG_ANSWER,CLEVR_train_2_remove_000004_answer_3.png

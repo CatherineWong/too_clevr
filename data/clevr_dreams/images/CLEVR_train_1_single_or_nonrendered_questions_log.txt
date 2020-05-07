@@ -1,0 +1,130 @@
+TEMPLATE_INDEX, 1_single_or.json_0
+INDEX, 4,
+QUESTION,How many objects are purple rubber things or metal things?
+INPUT_CLEVR_IMG, CLEVR_train_000096.png, ANSWER, 3
+INPUT_CLEVR_IMG, CLEVR_train_000609.png, ANSWER, 8
+INPUT_CLEVR_IMG, CLEVR_train_000717.png, ANSWER, 2
+INPUT_CLEVR_IMG, CLEVR_train_000991.png, ANSWER, 4
+INPUT_CLEVR_IMG, CLEVR_train_000775.png, ANSWER, 5
+TEMPLATE_INDEX, 1_single_or.json_0
+INDEX, 2,
+QUESTION,What number of objects are either small metal things or rubber things?
+INPUT_CLEVR_IMG, CLEVR_train_000312.png, ANSWER, 4
+INPUT_CLEVR_IMG, CLEVR_train_000875.png, ANSWER, 3
+INPUT_CLEVR_IMG, CLEVR_train_000955.png, ANSWER, 2
+INPUT_CLEVR_IMG, CLEVR_train_000835.png, ANSWER, 7
+INPUT_CLEVR_IMG, CLEVR_train_000389.png, ANSWER, 7
+TEMPLATE_INDEX, 1_single_or.json_0
+INDEX, 1,
+QUESTION,How many things are either cyan cubes or rubber things?
+INPUT_CLEVR_IMG, CLEVR_train_000911.png, ANSWER, 5
+INPUT_CLEVR_IMG, CLEVR_train_000927.png, ANSWER, 4
+INPUT_CLEVR_IMG, CLEVR_train_000538.png, ANSWER, 4
+INPUT_CLEVR_IMG, CLEVR_train_000783.png, ANSWER, 3
+INPUT_CLEVR_IMG, CLEVR_train_000454.png, ANSWER, 2
+
+
+TEMPLATE_INDEX, 1_single_or.json_1
+INDEX, 5,
+QUESTION,How many small things are either metal things or spheres?
+INPUT_CLEVR_IMG, CLEVR_train_000950.png, ANSWER, 0
+INPUT_CLEVR_IMG, CLEVR_train_000935.png, ANSWER, 2
+INPUT_CLEVR_IMG, CLEVR_train_000386.png, ANSWER, 3
+INPUT_CLEVR_IMG, CLEVR_train_000432.png, ANSWER, 3
+INPUT_CLEVR_IMG, CLEVR_train_000644.png, ANSWER, 1
+TEMPLATE_INDEX, 1_single_or.json_1
+INDEX, 6,
+QUESTION,How many small objects are either rubber things or metal things?
+INPUT_CLEVR_IMG, CLEVR_train_000950.png, ANSWER, 1
+INPUT_CLEVR_IMG, CLEVR_train_000968.png, ANSWER, 2
+INPUT_CLEVR_IMG, CLEVR_train_000764.png, ANSWER, 6
+INPUT_CLEVR_IMG, CLEVR_train_000644.png, ANSWER, 1
+INPUT_CLEVR_IMG, CLEVR_train_000858.png, ANSWER, 3
+TEMPLATE_INDEX, 1_single_or.json_1
+INDEX, 8,
+QUESTION,What number of large objects are cubes or cylinders?
+INPUT_CLEVR_IMG, CLEVR_train_000159.png, ANSWER, 4
+INPUT_CLEVR_IMG, CLEVR_train_000024.png, ANSWER, 3
+INPUT_CLEVR_IMG, CLEVR_train_000932.png, ANSWER, 2
+INPUT_CLEVR_IMG, CLEVR_train_000816.png, ANSWER, 3
+INPUT_CLEVR_IMG, CLEVR_train_000515.png, ANSWER, 1
+
+
+TEMPLATE_INDEX, 1_single_or.json_2
+INDEX, 12,
+QUESTION,What number of yellow objects are either large things or small things?
+INPUT_CLEVR_IMG, CLEVR_train_000311.png, ANSWER, 1
+INPUT_CLEVR_IMG, CLEVR_train_000770.png, ANSWER, 0
+INPUT_CLEVR_IMG, CLEVR_train_000700.png, ANSWER, 2
+INPUT_CLEVR_IMG, CLEVR_train_000909.png, ANSWER, 1
+INPUT_CLEVR_IMG, CLEVR_train_000884.png, ANSWER, 0
+TEMPLATE_INDEX, 1_single_or.json_2
+INDEX, 11,
+QUESTION,How many purple things are either large cylinders or large things?
+INPUT_CLEVR_IMG, CLEVR_train_000753.png, ANSWER, 0
+INPUT_CLEVR_IMG, CLEVR_train_000293.png, ANSWER, 0
+INPUT_CLEVR_IMG, CLEVR_train_000149.png, ANSWER, 1
+INPUT_CLEVR_IMG, CLEVR_train_000188.png, ANSWER, 0
+INPUT_CLEVR_IMG, CLEVR_train_000533.png, ANSWER, 0
+TEMPLATE_INDEX, 1_single_or.json_2
+INDEX, 10,
+QUESTION,What number of cyan objects are large things or metal cylinders?
+INPUT_CLEVR_IMG, CLEVR_train_000909.png, ANSWER, 0
+INPUT_CLEVR_IMG, CLEVR_train_000770.png, ANSWER, 0
+INPUT_CLEVR_IMG, CLEVR_train_000464.png, ANSWER, 0
+INPUT_CLEVR_IMG, CLEVR_train_000700.png, ANSWER, 1
+INPUT_CLEVR_IMG, CLEVR_train_000311.png, ANSWER, 0
+
+
+TEMPLATE_INDEX, 1_single_or.json_4
+INDEX, 18,
+QUESTION,What number of rubber objects are either yellow cylinders or small things?
+INPUT_CLEVR_IMG, CLEVR_train_000517.png, ANSWER, 3
+INPUT_CLEVR_IMG, CLEVR_train_000528.png, ANSWER, 0
+INPUT_CLEVR_IMG, CLEVR_train_000889.png, ANSWER, 2
+INPUT_CLEVR_IMG, CLEVR_train_000845.png, ANSWER, 3
+INPUT_CLEVR_IMG, CLEVR_train_000440.png, ANSWER, 1
+TEMPLATE_INDEX, 1_single_or.json_4
+INDEX, 15,
+QUESTION,How many metal things are small cylinders or spheres?
+INPUT_CLEVR_IMG, CLEVR_train_000744.png, ANSWER, 1
+INPUT_CLEVR_IMG, CLEVR_train_000984.png, ANSWER, 2
+INPUT_CLEVR_IMG, CLEVR_train_000701.png, ANSWER, 3
+INPUT_CLEVR_IMG, CLEVR_train_000889.png, ANSWER, 1
+INPUT_CLEVR_IMG, CLEVR_train_000175.png, ANSWER, 3
+TEMPLATE_INDEX, 1_single_or.json_4
+INDEX, 19,
+QUESTION,What number of rubber objects are either small cylinders or spheres?
+INPUT_CLEVR_IMG, CLEVR_train_000701.png, ANSWER, 3
+INPUT_CLEVR_IMG, CLEVR_train_000889.png, ANSWER, 2
+INPUT_CLEVR_IMG, CLEVR_train_000744.png, ANSWER, 1
+INPUT_CLEVR_IMG, CLEVR_train_000517.png, ANSWER, 3
+INPUT_CLEVR_IMG, CLEVR_train_000984.png, ANSWER, 2
+
+
+TEMPLATE_INDEX, 1_single_or.json_5
+INDEX, 20,
+QUESTION,What number of cubes are either large red things or large metal things?
+INPUT_CLEVR_IMG, CLEVR_train_000074.png, ANSWER, 1
+INPUT_CLEVR_IMG, CLEVR_train_000781.png, ANSWER, 0
+INPUT_CLEVR_IMG, CLEVR_train_000886.png, ANSWER, 2
+INPUT_CLEVR_IMG, CLEVR_train_000514.png, ANSWER, 1
+INPUT_CLEVR_IMG, CLEVR_train_000227.png, ANSWER, 0
+TEMPLATE_INDEX, 1_single_or.json_5
+INDEX, 23,
+QUESTION,How many cylinders are large metal things or small things?
+INPUT_CLEVR_IMG, CLEVR_train_000514.png, ANSWER, 1
+INPUT_CLEVR_IMG, CLEVR_train_000341.png, ANSWER, 2
+INPUT_CLEVR_IMG, CLEVR_train_000544.png, ANSWER, 2
+INPUT_CLEVR_IMG, CLEVR_train_000909.png, ANSWER, 2
+INPUT_CLEVR_IMG, CLEVR_train_000886.png, ANSWER, 3
+TEMPLATE_INDEX, 1_single_or.json_5
+INDEX, 21,
+QUESTION,What number of spheres are either small things or metal things?
+INPUT_CLEVR_IMG, CLEVR_train_000826.png, ANSWER, 2
+INPUT_CLEVR_IMG, CLEVR_train_000690.png, ANSWER, 1
+INPUT_CLEVR_IMG, CLEVR_train_000551.png, ANSWER, 3
+INPUT_CLEVR_IMG, CLEVR_train_000909.png, ANSWER, 0
+INPUT_CLEVR_IMG, CLEVR_train_000544.png, ANSWER, 0
+
+

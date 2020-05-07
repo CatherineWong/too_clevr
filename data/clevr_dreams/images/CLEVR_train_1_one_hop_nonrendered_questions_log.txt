@@ -1,0 +1,156 @@
+TEMPLATE_INDEX, 1_one_hop.json_0
+INDEX, 3,
+QUESTION,How many things are behind the large yellow thing?
+INPUT_CLEVR_IMG, CLEVR_train_000127.png, ANSWER, 2
+INPUT_CLEVR_IMG, CLEVR_train_000775.png, ANSWER, 2
+INPUT_CLEVR_IMG, CLEVR_train_000033.png, ANSWER, 2
+INPUT_CLEVR_IMG, CLEVR_train_000944.png, ANSWER, 3
+INPUT_CLEVR_IMG, CLEVR_train_000540.png, ANSWER, 0
+TEMPLATE_INDEX, 1_one_hop.json_0
+INDEX, 4,
+QUESTION,What number of yellow things are right the large yellow thing?
+INPUT_CLEVR_IMG, CLEVR_train_000209.png, ANSWER, 1
+INPUT_CLEVR_IMG, CLEVR_train_000540.png, ANSWER, 0
+INPUT_CLEVR_IMG, CLEVR_train_000478.png, ANSWER, 0
+INPUT_CLEVR_IMG, CLEVR_train_000127.png, ANSWER, 0
+INPUT_CLEVR_IMG, CLEVR_train_000775.png, ANSWER, 0
+TEMPLATE_INDEX, 1_one_hop.json_0
+INDEX, 0,
+QUESTION,What number of rubber things are behind the large yellow thing?
+INPUT_CLEVR_IMG, CLEVR_train_000944.png, ANSWER, 1
+INPUT_CLEVR_IMG, CLEVR_train_000033.png, ANSWER, 1
+INPUT_CLEVR_IMG, CLEVR_train_000478.png, ANSWER, 2
+INPUT_CLEVR_IMG, CLEVR_train_000775.png, ANSWER, 1
+INPUT_CLEVR_IMG, CLEVR_train_000209.png, ANSWER, 0
+
+
+TEMPLATE_INDEX, 1_one_hop.json_1
+INDEX, 5,
+QUESTION,Are there any small things right the large metal thing?
+INPUT_CLEVR_IMG, CLEVR_train_000470.png, ANSWER, True
+INPUT_CLEVR_IMG, CLEVR_train_000108.png, ANSWER, False
+INPUT_CLEVR_IMG, CLEVR_train_000107.png, ANSWER, True
+INPUT_CLEVR_IMG, CLEVR_train_000042.png, ANSWER, False
+INPUT_CLEVR_IMG, CLEVR_train_000718.png, ANSWER, False
+TEMPLATE_INDEX, 1_one_hop.json_1
+INDEX, 7,
+QUESTION,There is a small rubber cylinder; are there any small cylinders right it?
+INPUT_CLEVR_IMG, CLEVR_train_000480.png, ANSWER, False
+INPUT_CLEVR_IMG, CLEVR_train_000617.png, ANSWER, False
+INPUT_CLEVR_IMG, CLEVR_train_000172.png, ANSWER, False
+INPUT_CLEVR_IMG, CLEVR_train_000854.png, ANSWER, False
+INPUT_CLEVR_IMG, CLEVR_train_000805.png, ANSWER, False
+TEMPLATE_INDEX, 1_one_hop.json_1
+INDEX, 9,
+QUESTION,There is a large metal thing; are there any things left it?
+INPUT_CLEVR_IMG, CLEVR_train_000042.png, ANSWER, True
+INPUT_CLEVR_IMG, CLEVR_train_000022.png, ANSWER, False
+INPUT_CLEVR_IMG, CLEVR_train_000108.png, ANSWER, True
+INPUT_CLEVR_IMG, CLEVR_train_000718.png, ANSWER, True
+INPUT_CLEVR_IMG, CLEVR_train_000107.png, ANSWER, True
+
+
+TEMPLATE_INDEX, 1_one_hop.json_2
+INDEX, 12,
+QUESTION,How big is the cube right the rubber cube?
+INPUT_CLEVR_IMG, CLEVR_train_000870.png, ANSWER, small
+INPUT_CLEVR_IMG, CLEVR_train_000720.png, ANSWER, large
+INPUT_CLEVR_IMG, CLEVR_train_000625.png, ANSWER, small
+INPUT_CLEVR_IMG, CLEVR_train_000556.png, ANSWER, small
+INPUT_CLEVR_IMG, CLEVR_train_000425.png, ANSWER, large
+TEMPLATE_INDEX, 1_one_hop.json_2
+INDEX, 10,
+QUESTION,There is a rubber thing right the large rubber thing; how big is it?
+INPUT_CLEVR_IMG, CLEVR_train_000568.png, ANSWER, small
+INPUT_CLEVR_IMG, CLEVR_train_000641.png, ANSWER, small
+INPUT_CLEVR_IMG, CLEVR_train_000688.png, ANSWER, small
+INPUT_CLEVR_IMG, CLEVR_train_000514.png, ANSWER, small
+INPUT_CLEVR_IMG, CLEVR_train_000564.png, ANSWER, small
+TEMPLATE_INDEX, 1_one_hop.json_2
+INDEX, 14,
+QUESTION,How big is the rubber thing front the yellow thing?
+INPUT_CLEVR_IMG, CLEVR_train_000212.png, ANSWER, large
+INPUT_CLEVR_IMG, CLEVR_train_000985.png, ANSWER, large
+INPUT_CLEVR_IMG, CLEVR_train_000568.png, ANSWER, large
+INPUT_CLEVR_IMG, CLEVR_train_000975.png, ANSWER, small
+INPUT_CLEVR_IMG, CLEVR_train_000950.png, ANSWER, large
+
+
+TEMPLATE_INDEX, 1_one_hop.json_3
+INDEX, 15,
+QUESTION,The rubber thing that is left the yellow thing is what color?
+INPUT_CLEVR_IMG, CLEVR_train_000012.png, ANSWER, cyan
+INPUT_CLEVR_IMG, CLEVR_train_000916.png, ANSWER, gray
+INPUT_CLEVR_IMG, CLEVR_train_000609.png, ANSWER, purple
+INPUT_CLEVR_IMG, CLEVR_train_000090.png, ANSWER, gray
+INPUT_CLEVR_IMG, CLEVR_train_000658.png, ANSWER, brown
+TEMPLATE_INDEX, 1_one_hop.json_3
+INDEX, 16,
+QUESTION,What color is the cylinder that is left the rubber cylinder?
+INPUT_CLEVR_IMG, CLEVR_train_000396.png, ANSWER, green
+INPUT_CLEVR_IMG, CLEVR_train_000744.png, ANSWER, gray
+INPUT_CLEVR_IMG, CLEVR_train_000446.png, ANSWER, gray
+INPUT_CLEVR_IMG, CLEVR_train_000763.png, ANSWER, blue
+INPUT_CLEVR_IMG, CLEVR_train_000691.png, ANSWER, blue
+TEMPLATE_INDEX, 1_one_hop.json_3
+INDEX, 18,
+QUESTION,There is a rubber thing that is behind the small cyan thing; what is its color?
+INPUT_CLEVR_IMG, CLEVR_train_000695.png, ANSWER, cyan
+INPUT_CLEVR_IMG, CLEVR_train_000773.png, ANSWER, yellow
+INPUT_CLEVR_IMG, CLEVR_train_000306.png, ANSWER, gray
+INPUT_CLEVR_IMG, CLEVR_train_000945.png, ANSWER, cyan
+INPUT_CLEVR_IMG, CLEVR_train_000346.png, ANSWER, purple
+
+
+TEMPLATE_INDEX, 1_one_hop.json_4
+INDEX, 20,
+QUESTION,What material is the thing that is front the large cylinder?
+INPUT_CLEVR_IMG, CLEVR_train_000951.png, ANSWER, metal
+INPUT_CLEVR_IMG, CLEVR_train_000695.png, ANSWER, metal
+INPUT_CLEVR_IMG, CLEVR_train_000840.png, ANSWER, metal
+INPUT_CLEVR_IMG, CLEVR_train_000342.png, ANSWER, metal
+INPUT_CLEVR_IMG, CLEVR_train_000670.png, ANSWER, metal
+TEMPLATE_INDEX, 1_one_hop.json_4
+INDEX, 21,
+QUESTION,What is the cylinder right the large yellow thing made of?
+INPUT_CLEVR_IMG, CLEVR_train_000535.png, ANSWER, metal
+INPUT_CLEVR_IMG, CLEVR_train_000070.png, ANSWER, rubber
+INPUT_CLEVR_IMG, CLEVR_train_000988.png, ANSWER, metal
+INPUT_CLEVR_IMG, CLEVR_train_000393.png, ANSWER, metal
+INPUT_CLEVR_IMG, CLEVR_train_000670.png, ANSWER, metal
+TEMPLATE_INDEX, 1_one_hop.json_4
+INDEX, 22,
+QUESTION,What is the large thing right the cyan thing made of?
+INPUT_CLEVR_IMG, CLEVR_train_000761.png, ANSWER, rubber
+INPUT_CLEVR_IMG, CLEVR_train_000272.png, ANSWER, metal
+INPUT_CLEVR_IMG, CLEVR_train_000667.png, ANSWER, metal
+INPUT_CLEVR_IMG, CLEVR_train_000299.png, ANSWER, metal
+INPUT_CLEVR_IMG, CLEVR_train_000635.png, ANSWER, rubber
+
+
+TEMPLATE_INDEX, 1_one_hop.json_5
+INDEX, 26,
+QUESTION,There is a metal thing left the blue thing; what is its shape?
+INPUT_CLEVR_IMG, CLEVR_train_000866.png, ANSWER, cylinder
+INPUT_CLEVR_IMG, CLEVR_train_000383.png, ANSWER, sphere
+INPUT_CLEVR_IMG, CLEVR_train_000480.png, ANSWER, cylinder
+INPUT_CLEVR_IMG, CLEVR_train_000835.png, ANSWER, sphere
+INPUT_CLEVR_IMG, CLEVR_train_000248.png, ANSWER, cylinder
+TEMPLATE_INDEX, 1_one_hop.json_5
+INDEX, 25,
+QUESTION,What shape is the metal thing that is behind the small metal sphere?
+INPUT_CLEVR_IMG, CLEVR_train_000337.png, ANSWER, sphere
+INPUT_CLEVR_IMG, CLEVR_train_000741.png, ANSWER, cube
+INPUT_CLEVR_IMG, CLEVR_train_000393.png, ANSWER, cylinder
+INPUT_CLEVR_IMG, CLEVR_train_000383.png, ANSWER, cube
+INPUT_CLEVR_IMG, CLEVR_train_000222.png, ANSWER, cube
+TEMPLATE_INDEX, 1_one_hop.json_5
+INDEX, 29,
+QUESTION,There is a metal thing front the cyan thing; what is its shape?
+INPUT_CLEVR_IMG, CLEVR_train_000262.png, ANSWER, sphere
+INPUT_CLEVR_IMG, CLEVR_train_000310.png, ANSWER, cylinder
+INPUT_CLEVR_IMG, CLEVR_train_000152.png, ANSWER, sphere
+INPUT_CLEVR_IMG, CLEVR_train_000005.png, ANSWER, cube
+INPUT_CLEVR_IMG, CLEVR_train_000292.png, ANSWER, sphere
+
+

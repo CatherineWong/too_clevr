@@ -55,6 +55,9 @@ parser.add_argument('--shape_color_combos_json', default=None,
 # Scene file and output settings
 parser.add_argument("--num_questions_per_template", default=1, type=int,
                     help="The number of questions to render answer scene images for.")
+parser.add_argument("--render_inputs", default=1, type=int,
+                    help="Also renders inputs.")
+                    
 parser.add_argument('--input_questions_dir', default='/Users/catwong/Desktop/zyzzyva/code/too_clevr/data/clevr_dreams/questions',
     help="The base directory containing question files to render images for.")
 parser.add_argument('--input_questions_file', default='CLEVR_extended_questions',
@@ -109,12 +112,15 @@ def render_scene(args,
     # Load materials
     utils.load_materials(args.material_dir)
 
+    
+    
     # Set render arguments so we can get pixel coordinates later.
     # We use functionality specific to the CYCLES renderer so BLENDER_RENDER
     # cannot be used.
     render_args = bpy.context.scene.render
+    # Where we will render to 
+    render_args.filepath = output_img
     render_args.engine = "CYCLES"
-    render_args.filepath = output_image
     render_args.resolution_x = args.width
     render_args.resolution_y = args.height
     render_args.resolution_percentage = 100
@@ -138,22 +144,69 @@ def render_scene(args,
     if args.use_gpu == 1:
       bpy.context.scene.cycles.device = 'GPU'
     
-    # Put a plane on the ground so we can compute cardinal directions
-    bpy.ops.mesh.primitive_plane_add(radius=5)
-    plane = bpy.context.object
-
-    def rand(L):
-      return 2.0 * L * (random.random() - 0.5)
+    # Set the camera -- for now, we will just ignore the camera. 
+     
+    # Add the objects.
+    add_objects(scene['objects'])
     
+    # Render the scene
+    while True:
+      try:
+        bpy.ops.render.render(write_still=True)
+        break
+      except Exception as e:
+        print(e)
+
+    if output_blendfile is not None:
+      bpy.ops.wm.save_as_mainfile(filepath=output_blendfile)
+
+def add_objects(objects):
+    # Load the property file
+    with open(args.properties_json, 'r') as f:
+      properties = json.load(f)
+      color_name_to_rgba = {}
+      for name, rgb in properties['colors'].items():
+        rgba = [float(c) / 255.0 for c in rgb] + [1.0]
+        color_name_to_rgba[name] = rgba
+      material_mapping = [(v, k) for k, v in properties['materials'].items()]
+      object_mapping = [(v, k) for k, v in properties['shapes'].items()]
+      size_mapping = list(properties['sizes'].items())
+
+    shape_color_combos = None
+    if args.shape_color_combos_json is not None:
+      with open(args.shape_color_combos_json, 'r') as f:
+        shape_color_combos = list(json.load(f).items())
+    
+    # Add individual objects
+    blender_objects = []
+    for obj_struct in objects:
+        r = properties['sizes'][obj_struct['size']]
+        rgba = properties['colors'][obj_struct['color']]
+        obj_name = properties['shapes'][obj_struct['shape']]
+        theta = obj_struct['rotation']
+        xyz = obj_struct['3d_coords']
+        
+        # Actually add the object to the scene
+        utils.add_object(args.shape_dir, obj_name, r, loc=None, theta=theta, xyz=xyz)
+        obj = bpy.context.object
+        blender_objects.append(obj) 
+        
+        # Attach the material
+        mat_name = properties['materials'][obj_struct['material']]
+        utils.add_material(mat_name, Color=rgba)
+    return objects, blender_objects
     
 def main(args):
     num_digits = 6
-    prefix = f'%s_' % (args.input_questions_file) 
-    img_template = '%s%%0%dd_%%d.png' % (prefix, num_digits)
-    img_template = os.path.join(args.output_image_dir, args.input_questions_file, img_template)
+    prefix = '%s_' % (args.input_questions_file) 
+    img_answer_template = '%s%%0%dd_answer_%%d.png' % (prefix, num_digits)
+    img_answer_template = os.path.join(args.output_image_dir, args.input_questions_file, img_answer_template)
+    
+    img_input_template = '%s%%0%dd_input_%%d.png' % (prefix, num_digits)
+    img_input_template = os.path.join(args.output_image_dir, args.input_questions_file, img_answer_template)
     
     if not os.path.isdir(args.output_image_dir):
-        print(f"Making directory: {args.output_image_dir}")
+        print("Making directory: %s "% (args.output_image_dir))
         os.makedirs(args.output_image_dir)
     
     input_fn = os.path.join(args.input_questions_dir, args.input_questions_file + '.json')
@@ -162,34 +215,50 @@ def main(args):
     # Find the scenes that we will be rendering for.
     template_to_questions = defaultdict(list)
     for q in questions['questions']:
-        template_idx = f"{q['template_filename']}_{q['template_index']}"
+        template_idx = "%s_%s" % (q['template_filename'], q['template_index'])
         template_to_questions[template_idx].append(q['question_index'])
     # Scenes per template
     qs_per_template = {
         template_idx : random.sample(template_to_questions[template_idx], args.num_questions_per_template)
         for template_idx in template_to_questions
     }
-    print(f"Found {len(qs_per_template)} templates, rendering {args.num_questions_per_template} questions per template.")
+    print("Found %d templates, rendering %d questions per template" % (len(qs_per_template), args.num_questions_per_template))
+
 
     # Render scenes.
-    text_questions = {}
+    questions_log = ""
     for i, template_idx in enumerate(qs_per_template):
         for j, q_idx in enumerate(qs_per_template[template_idx]):
-            print(f"Now on scene {j + 1}/{len(qs_per_template[template_idx])} of {i + 1}/{len(qs_per_template)} templates")
+            print("Now on scene %d / %d of %d / %d templates" % (
+                (j+1),
+                len(qs_per_template[template_idx]),
+                (i+1), 
+                len(qs_per_template)
+            ))
             question = questions['questions'][q_idx]
             
             if type(question['answers'][0]) is not dict:
                 continue
-            print(f"...rendering {len(question['answers'])} answer scenes")
+            print("...found answer templates to render.")
+            print("Rendering for: %s" % question[0])
             # For convenience, we will store and log the text questions
             text_questions[q_idx] = question['question']
+            questions_log += "INDEX, %d,\n" % q_idx
+            questions_log += "QUESTION,"+question['question'][0] + "\n"
+            
+            if args.render_inputs:
+                # Find and render the input scenes.
+                img_path = img_input_template % (q_idx, k)
+                questions_log += "IMG_INPUT,%s\n" % os.path.basename(img_path)
+            
             for k, scene in enumerate(question['answers']):
-                img_path = img_template % (q_idx, k)
-                render_scene(args,
-                            scene,
-                            question_index=q_idx,
-                            answer_index=k,
-                            output_img=img_path)
+                img_path = img_answer_template % (q_idx, k)
+                questions_log += "IMG_ANSWER,%s\n" % os.path.basename(img_path)
+                # render_scene(args,
+                #             scene,
+                #             question_index=q_idx,
+                #             answer_index=k,
+                #             output_img=img_path)
             
 
 if __name__ == '__main__':

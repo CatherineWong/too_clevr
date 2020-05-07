@@ -1,0 +1,106 @@
+
+
+TEMPLATE_INDEX, 2_remove.json_1
+INDEX, 12,
+QUESTION,If you removed the small yellow metal cubes, how many things would be left?
+INPUT_CLEVR_IMG, CLEVR_train_000695.png, ANSWER, 7
+INPUT_CLEVR_IMG, CLEVR_train_000614.png, ANSWER, 4
+INPUT_CLEVR_IMG, CLEVR_train_000459.png, ANSWER, 10
+INPUT_CLEVR_IMG, CLEVR_train_000322.png, ANSWER, 9
+INPUT_CLEVR_IMG, CLEVR_train_000417.png, ANSWER, 10
+TEMPLATE_INDEX, 2_remove.json_1
+INDEX, 11,
+QUESTION,If you removed the cyan metal spheres, how many things would be left?
+INPUT_CLEVR_IMG, CLEVR_train_000963.png, ANSWER, 3
+INPUT_CLEVR_IMG, CLEVR_train_000614.png, ANSWER, 3
+INPUT_CLEVR_IMG, CLEVR_train_000417.png, ANSWER, 9
+INPUT_CLEVR_IMG, CLEVR_train_000322.png, ANSWER, 9
+INPUT_CLEVR_IMG, CLEVR_train_000878.png, ANSWER, 5
+TEMPLATE_INDEX, 2_remove.json_1
+INDEX, 15,
+QUESTION,If you removed the things, how many things would be left?
+INPUT_CLEVR_IMG, CLEVR_train_000695.png, ANSWER, 0
+INPUT_CLEVR_IMG, CLEVR_train_000559.png, ANSWER, 0
+INPUT_CLEVR_IMG, CLEVR_train_000963.png, ANSWER, 0
+INPUT_CLEVR_IMG, CLEVR_train_000099.png, ANSWER, 0
+INPUT_CLEVR_IMG, CLEVR_train_000250.png, ANSWER, 0
+
+
+TEMPLATE_INDEX, 2_remove.json_2
+INDEX, 28,
+QUESTION,If you removed the green things, how many cylinders would be left?
+INPUT_CLEVR_IMG, CLEVR_train_000210.png, ANSWER, 6
+INPUT_CLEVR_IMG, CLEVR_train_000383.png, ANSWER, 3
+INPUT_CLEVR_IMG, CLEVR_train_000854.png, ANSWER, 3
+INPUT_CLEVR_IMG, CLEVR_train_000250.png, ANSWER, 4
+INPUT_CLEVR_IMG, CLEVR_train_000152.png, ANSWER, 0
+TEMPLATE_INDEX, 2_remove.json_2
+INDEX, 26,
+QUESTION,If you removed the gray things, how many spheres would be left?
+INPUT_CLEVR_IMG, CLEVR_train_000152.png, ANSWER, 2
+INPUT_CLEVR_IMG, CLEVR_train_000504.png, ANSWER, 3
+INPUT_CLEVR_IMG, CLEVR_train_000878.png, ANSWER, 3
+INPUT_CLEVR_IMG, CLEVR_train_000850.png, ANSWER, 2
+INPUT_CLEVR_IMG, CLEVR_train_000845.png, ANSWER, 5
+TEMPLATE_INDEX, 2_remove.json_2
+INDEX, 27,
+QUESTION,If you removed the yellow things, how many cubes would be left?
+INPUT_CLEVR_IMG, CLEVR_train_000850.png, ANSWER, 6
+INPUT_CLEVR_IMG, CLEVR_train_000069.png, ANSWER, 1
+INPUT_CLEVR_IMG, CLEVR_train_000383.png, ANSWER, 2
+INPUT_CLEVR_IMG, CLEVR_train_000854.png, ANSWER, 4
+INPUT_CLEVR_IMG, CLEVR_train_000459.png, ANSWER, 2
+
+
+TEMPLATE_INDEX, 2_remove.json_3
+INDEX, 30,
+QUESTION,If you removed the cylinders, how many large things would be left?
+INPUT_CLEVR_IMG, CLEVR_train_000152.png, ANSWER, 4
+INPUT_CLEVR_IMG, CLEVR_train_000878.png, ANSWER, 1
+INPUT_CLEVR_IMG, CLEVR_train_000120.png, ANSWER, 1
+INPUT_CLEVR_IMG, CLEVR_train_000417.png, ANSWER, 0
+INPUT_CLEVR_IMG, CLEVR_train_000614.png, ANSWER, 2
+TEMPLATE_INDEX, 2_remove.json_3
+INDEX, 35,
+QUESTION,If you removed the spheres, how many small things would be left?
+INPUT_CLEVR_IMG, CLEVR_train_000559.png, ANSWER, 0
+INPUT_CLEVR_IMG, CLEVR_train_000460.png, ANSWER, 1
+INPUT_CLEVR_IMG, CLEVR_train_000504.png, ANSWER, 4
+INPUT_CLEVR_IMG, CLEVR_train_000963.png, ANSWER, 0
+INPUT_CLEVR_IMG, CLEVR_train_000322.png, ANSWER, 3
+TEMPLATE_INDEX, 2_remove.json_3
+INDEX, 32,
+QUESTION,If you removed the spheres, how many large things would be left?
+INPUT_CLEVR_IMG, CLEVR_train_000559.png, ANSWER, 1
+INPUT_CLEVR_IMG, CLEVR_train_000460.png, ANSWER, 3
+INPUT_CLEVR_IMG, CLEVR_train_000504.png, ANSWER, 3
+INPUT_CLEVR_IMG, CLEVR_train_000963.png, ANSWER, 1
+INPUT_CLEVR_IMG, CLEVR_train_000322.png, ANSWER, 5
+
+
+TEMPLATE_INDEX, 2_remove.json_4
+INDEX, 37,
+QUESTION,If you removed the cyan spheres, how many spheres would be left?
+INPUT_CLEVR_IMG, CLEVR_train_000614.png, ANSWER, 0
+INPUT_CLEVR_IMG, CLEVR_train_000383.png, ANSWER, 2
+INPUT_CLEVR_IMG, CLEVR_train_000417.png, ANSWER, 3
+INPUT_CLEVR_IMG, CLEVR_train_000152.png, ANSWER, 2
+INPUT_CLEVR_IMG, CLEVR_train_000210.png, ANSWER, 1
+TEMPLATE_INDEX, 2_remove.json_4
+INDEX, 45,
+QUESTION,If you removed the red spheres, how many spheres would be left?
+INPUT_CLEVR_IMG, CLEVR_train_000854.png, ANSWER, 3
+INPUT_CLEVR_IMG, CLEVR_train_000069.png, ANSWER, 1
+INPUT_CLEVR_IMG, CLEVR_train_000322.png, ANSWER, 1
+INPUT_CLEVR_IMG, CLEVR_train_000504.png, ANSWER, 2
+INPUT_CLEVR_IMG, CLEVR_train_000417.png, ANSWER, 3
+TEMPLATE_INDEX, 2_remove.json_4
+INDEX, 44,
+QUESTION,If you removed the gray cylinders, how many cylinders would be left?
+INPUT_CLEVR_IMG, CLEVR_train_000210.png, ANSWER, 5
+INPUT_CLEVR_IMG, CLEVR_train_000695.png, ANSWER, 1
+INPUT_CLEVR_IMG, CLEVR_train_000878.png, ANSWER, 2
+INPUT_CLEVR_IMG, CLEVR_train_000417.png, ANSWER, 3
+INPUT_CLEVR_IMG, CLEVR_train_000614.png, ANSWER, 2
+
+

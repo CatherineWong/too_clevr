@@ -1,0 +1,78 @@
+TEMPLATE_INDEX, 1_compare_integer.json_0
+INDEX, 4,
+QUESTION,Are there the same number of metal cylinders and rubber things?
+INPUT_CLEVR_IMG, CLEVR_train_000639.png, ANSWER, False
+INPUT_CLEVR_IMG, CLEVR_train_000565.png, ANSWER, False
+INPUT_CLEVR_IMG, CLEVR_train_000372.png, ANSWER, False
+INPUT_CLEVR_IMG, CLEVR_train_000671.png, ANSWER, False
+INPUT_CLEVR_IMG, CLEVR_train_000786.png, ANSWER, False
+TEMPLATE_INDEX, 1_compare_integer.json_0
+INDEX, 2,
+QUESTION,Are there the same number of rubber things and large purple metal spheres?
+INPUT_CLEVR_IMG, CLEVR_train_000513.png, ANSWER, False
+INPUT_CLEVR_IMG, CLEVR_train_000522.png, ANSWER, False
+INPUT_CLEVR_IMG, CLEVR_train_000791.png, ANSWER, False
+INPUT_CLEVR_IMG, CLEVR_train_000056.png, ANSWER, False
+INPUT_CLEVR_IMG, CLEVR_train_000888.png, ANSWER, False
+TEMPLATE_INDEX, 1_compare_integer.json_0
+INDEX, 0,
+QUESTION,Is the number of metal cylinders the same as the number of things?
+INPUT_CLEVR_IMG, CLEVR_train_000671.png, ANSWER, False
+INPUT_CLEVR_IMG, CLEVR_train_000372.png, ANSWER, False
+INPUT_CLEVR_IMG, CLEVR_train_000599.png, ANSWER, False
+INPUT_CLEVR_IMG, CLEVR_train_000023.png, ANSWER, False
+INPUT_CLEVR_IMG, CLEVR_train_000565.png, ANSWER, False
+
+
+TEMPLATE_INDEX, 1_compare_integer.json_1
+INDEX, 8,
+QUESTION,Is the number of rubber things less than the number of large metal things?
+INPUT_CLEVR_IMG, CLEVR_train_000169.png, ANSWER, True
+INPUT_CLEVR_IMG, CLEVR_train_000384.png, ANSWER, False
+INPUT_CLEVR_IMG, CLEVR_train_000229.png, ANSWER, False
+INPUT_CLEVR_IMG, CLEVR_train_000523.png, ANSWER, True
+INPUT_CLEVR_IMG, CLEVR_train_000275.png, ANSWER, False
+TEMPLATE_INDEX, 1_compare_integer.json_1
+INDEX, 9,
+QUESTION,Is the number of brown rubber things less than the number of rubber things?
+INPUT_CLEVR_IMG, CLEVR_train_000602.png, ANSWER, True
+INPUT_CLEVR_IMG, CLEVR_train_000273.png, ANSWER, True
+INPUT_CLEVR_IMG, CLEVR_train_000687.png, ANSWER, True
+INPUT_CLEVR_IMG, CLEVR_train_000400.png, ANSWER, True
+INPUT_CLEVR_IMG, CLEVR_train_000786.png, ANSWER, True
+TEMPLATE_INDEX, 1_compare_integer.json_1
+INDEX, 6,
+QUESTION,Are there fewer brown metal things than large things?
+INPUT_CLEVR_IMG, CLEVR_train_000275.png, ANSWER, True
+INPUT_CLEVR_IMG, CLEVR_train_000965.png, ANSWER, True
+INPUT_CLEVR_IMG, CLEVR_train_000602.png, ANSWER, True
+INPUT_CLEVR_IMG, CLEVR_train_000801.png, ANSWER, True
+INPUT_CLEVR_IMG, CLEVR_train_000974.png, ANSWER, True
+
+
+TEMPLATE_INDEX, 1_compare_integer.json_2
+INDEX, 12,
+QUESTION,Is the number of purple metal things greater than the number of small rubber things?
+INPUT_CLEVR_IMG, CLEVR_train_000989.png, ANSWER, False
+INPUT_CLEVR_IMG, CLEVR_train_000561.png, ANSWER, False
+INPUT_CLEVR_IMG, CLEVR_train_000363.png, ANSWER, False
+INPUT_CLEVR_IMG, CLEVR_train_000316.png, ANSWER, False
+INPUT_CLEVR_IMG, CLEVR_train_000606.png, ANSWER, False
+TEMPLATE_INDEX, 1_compare_integer.json_2
+INDEX, 10,
+QUESTION,Is the number of brown cubes greater than the number of rubber things?
+INPUT_CLEVR_IMG, CLEVR_train_000045.png, ANSWER, False
+INPUT_CLEVR_IMG, CLEVR_train_000037.png, ANSWER, False
+INPUT_CLEVR_IMG, CLEVR_train_000210.png, ANSWER, False
+INPUT_CLEVR_IMG, CLEVR_train_000332.png, ANSWER, False
+INPUT_CLEVR_IMG, CLEVR_train_000470.png, ANSWER, False
+TEMPLATE_INDEX, 1_compare_integer.json_2
+INDEX, 11,
+QUESTION,Is the number of spheres greater than the number of rubber things?
+INPUT_CLEVR_IMG, CLEVR_train_000561.png, ANSWER, False
+INPUT_CLEVR_IMG, CLEVR_train_000682.png, ANSWER, False
+INPUT_CLEVR_IMG, CLEVR_train_000363.png, ANSWER, True
+INPUT_CLEVR_IMG, CLEVR_train_000374.png, ANSWER, False
+INPUT_CLEVR_IMG, CLEVR_train_000663.png, ANSWER, False
+
+

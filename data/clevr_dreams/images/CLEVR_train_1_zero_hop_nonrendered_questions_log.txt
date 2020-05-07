@@ -1,0 +1,156 @@
+TEMPLATE_INDEX, 1_zero_hop.json_0
+INDEX, 0,
+QUESTION,How many large rubber cubes are there?
+INPUT_CLEVR_IMG, CLEVR_train_000269.png, ANSWER, 1
+INPUT_CLEVR_IMG, CLEVR_train_000719.png, ANSWER, 1
+INPUT_CLEVR_IMG, CLEVR_train_000540.png, ANSWER, 2
+INPUT_CLEVR_IMG, CLEVR_train_000536.png, ANSWER, 1
+INPUT_CLEVR_IMG, CLEVR_train_000599.png, ANSWER, 1
+TEMPLATE_INDEX, 1_zero_hop.json_0
+INDEX, 4,
+QUESTION,What number of metal cylinders are there?
+INPUT_CLEVR_IMG, CLEVR_train_000719.png, ANSWER, 1
+INPUT_CLEVR_IMG, CLEVR_train_000536.png, ANSWER, 2
+INPUT_CLEVR_IMG, CLEVR_train_000599.png, ANSWER, 4
+INPUT_CLEVR_IMG, CLEVR_train_000658.png, ANSWER, 1
+INPUT_CLEVR_IMG, CLEVR_train_000540.png, ANSWER, 2
+TEMPLATE_INDEX, 1_zero_hop.json_0
+INDEX, 1,
+QUESTION,What number of small things are there?
+INPUT_CLEVR_IMG, CLEVR_train_000658.png, ANSWER, 2
+INPUT_CLEVR_IMG, CLEVR_train_000599.png, ANSWER, 2
+INPUT_CLEVR_IMG, CLEVR_train_000269.png, ANSWER, 2
+INPUT_CLEVR_IMG, CLEVR_train_000719.png, ANSWER, 5
+INPUT_CLEVR_IMG, CLEVR_train_000540.png, ANSWER, 5
+
+
+TEMPLATE_INDEX, 1_zero_hop.json_1
+INDEX, 7,
+QUESTION,Are there any green spheres?
+INPUT_CLEVR_IMG, CLEVR_train_000083.png, ANSWER, False
+INPUT_CLEVR_IMG, CLEVR_train_000290.png, ANSWER, True
+INPUT_CLEVR_IMG, CLEVR_train_000837.png, ANSWER, True
+INPUT_CLEVR_IMG, CLEVR_train_000739.png, ANSWER, False
+INPUT_CLEVR_IMG, CLEVR_train_000905.png, ANSWER, False
+TEMPLATE_INDEX, 1_zero_hop.json_1
+INDEX, 8,
+QUESTION,Are any metal spheres visible?
+INPUT_CLEVR_IMG, CLEVR_train_000123.png, ANSWER, True
+INPUT_CLEVR_IMG, CLEVR_train_000290.png, ANSWER, True
+INPUT_CLEVR_IMG, CLEVR_train_000837.png, ANSWER, True
+INPUT_CLEVR_IMG, CLEVR_train_000739.png, ANSWER, True
+INPUT_CLEVR_IMG, CLEVR_train_000037.png, ANSWER, False
+TEMPLATE_INDEX, 1_zero_hop.json_1
+INDEX, 5,
+QUESTION,Are any small metal things visible?
+INPUT_CLEVR_IMG, CLEVR_train_000905.png, ANSWER, True
+INPUT_CLEVR_IMG, CLEVR_train_000083.png, ANSWER, True
+INPUT_CLEVR_IMG, CLEVR_train_000307.png, ANSWER, True
+INPUT_CLEVR_IMG, CLEVR_train_000290.png, ANSWER, True
+INPUT_CLEVR_IMG, CLEVR_train_000837.png, ANSWER, True
+
+
+TEMPLATE_INDEX, 1_zero_hop.json_2
+INDEX, 14,
+QUESTION,What is the shape of the large blue thing?
+INPUT_CLEVR_IMG, CLEVR_train_000589.png, ANSWER, sphere
+INPUT_CLEVR_IMG, CLEVR_train_000852.png, ANSWER, cube
+INPUT_CLEVR_IMG, CLEVR_train_000472.png, ANSWER, cylinder
+INPUT_CLEVR_IMG, CLEVR_train_000196.png, ANSWER, cube
+INPUT_CLEVR_IMG, CLEVR_train_000344.png, ANSWER, cylinder
+TEMPLATE_INDEX, 1_zero_hop.json_2
+INDEX, 10,
+QUESTION,What is the shape of the small gray thing?
+INPUT_CLEVR_IMG, CLEVR_train_000761.png, ANSWER, cube
+INPUT_CLEVR_IMG, CLEVR_train_000135.png, ANSWER, cube
+INPUT_CLEVR_IMG, CLEVR_train_000399.png, ANSWER, cylinder
+INPUT_CLEVR_IMG, CLEVR_train_000589.png, ANSWER, cube
+INPUT_CLEVR_IMG, CLEVR_train_000330.png, ANSWER, sphere
+TEMPLATE_INDEX, 1_zero_hop.json_2
+INDEX, 13,
+QUESTION,What is the shape of the cyan metal thing?
+INPUT_CLEVR_IMG, CLEVR_train_000589.png, ANSWER, sphere
+INPUT_CLEVR_IMG, CLEVR_train_000472.png, ANSWER, cube
+INPUT_CLEVR_IMG, CLEVR_train_000196.png, ANSWER, sphere
+INPUT_CLEVR_IMG, CLEVR_train_000594.png, ANSWER, sphere
+INPUT_CLEVR_IMG, CLEVR_train_000761.png, ANSWER, cylinder
+
+
+TEMPLATE_INDEX, 1_zero_hop.json_3
+INDEX, 16,
+QUESTION,What is the material of the small blue thing?
+INPUT_CLEVR_IMG, CLEVR_train_000553.png, ANSWER, metal
+INPUT_CLEVR_IMG, CLEVR_train_000415.png, ANSWER, metal
+INPUT_CLEVR_IMG, CLEVR_train_000657.png, ANSWER, rubber
+INPUT_CLEVR_IMG, CLEVR_train_000508.png, ANSWER, metal
+INPUT_CLEVR_IMG, CLEVR_train_000008.png, ANSWER, rubber
+TEMPLATE_INDEX, 1_zero_hop.json_3
+INDEX, 19,
+QUESTION,What material is the cyan thing?
+INPUT_CLEVR_IMG, CLEVR_train_000432.png, ANSWER, rubber
+INPUT_CLEVR_IMG, CLEVR_train_000553.png, ANSWER, metal
+INPUT_CLEVR_IMG, CLEVR_train_000182.png, ANSWER, metal
+INPUT_CLEVR_IMG, CLEVR_train_000008.png, ANSWER, metal
+INPUT_CLEVR_IMG, CLEVR_train_000657.png, ANSWER, rubber
+TEMPLATE_INDEX, 1_zero_hop.json_3
+INDEX, 15,
+QUESTION,What is the material of the small brown thing?
+INPUT_CLEVR_IMG, CLEVR_train_000223.png, ANSWER, rubber
+INPUT_CLEVR_IMG, CLEVR_train_000600.png, ANSWER, rubber
+INPUT_CLEVR_IMG, CLEVR_train_000487.png, ANSWER, metal
+INPUT_CLEVR_IMG, CLEVR_train_000008.png, ANSWER, rubber
+INPUT_CLEVR_IMG, CLEVR_train_000588.png, ANSWER, rubber
+
+
+TEMPLATE_INDEX, 1_zero_hop.json_4
+INDEX, 22,
+QUESTION,What color is the large metal cube?
+INPUT_CLEVR_IMG, CLEVR_train_000077.png, ANSWER, brown
+INPUT_CLEVR_IMG, CLEVR_train_000256.png, ANSWER, purple
+INPUT_CLEVR_IMG, CLEVR_train_000504.png, ANSWER, yellow
+INPUT_CLEVR_IMG, CLEVR_train_000125.png, ANSWER, red
+INPUT_CLEVR_IMG, CLEVR_train_000809.png, ANSWER, blue
+TEMPLATE_INDEX, 1_zero_hop.json_4
+INDEX, 24,
+QUESTION,The metal cube has what color?
+INPUT_CLEVR_IMG, CLEVR_train_000077.png, ANSWER, brown
+INPUT_CLEVR_IMG, CLEVR_train_000739.png, ANSWER, brown
+INPUT_CLEVR_IMG, CLEVR_train_000906.png, ANSWER, yellow
+INPUT_CLEVR_IMG, CLEVR_train_000504.png, ANSWER, yellow
+INPUT_CLEVR_IMG, CLEVR_train_000492.png, ANSWER, blue
+TEMPLATE_INDEX, 1_zero_hop.json_4
+INDEX, 23,
+QUESTION,The metal sphere has what color?
+INPUT_CLEVR_IMG, CLEVR_train_000125.png, ANSWER, gray
+INPUT_CLEVR_IMG, CLEVR_train_000182.png, ANSWER, cyan
+INPUT_CLEVR_IMG, CLEVR_train_000634.png, ANSWER, red
+INPUT_CLEVR_IMG, CLEVR_train_000739.png, ANSWER, blue
+INPUT_CLEVR_IMG, CLEVR_train_000604.png, ANSWER, gray
+
+
+TEMPLATE_INDEX, 1_zero_hop.json_5
+INDEX, 28,
+QUESTION,What is the size of the brown thing?
+INPUT_CLEVR_IMG, CLEVR_train_000243.png, ANSWER, large
+INPUT_CLEVR_IMG, CLEVR_train_000006.png, ANSWER, large
+INPUT_CLEVR_IMG, CLEVR_train_000198.png, ANSWER, small
+INPUT_CLEVR_IMG, CLEVR_train_000368.png, ANSWER, small
+INPUT_CLEVR_IMG, CLEVR_train_000410.png, ANSWER, large
+TEMPLATE_INDEX, 1_zero_hop.json_5
+INDEX, 25,
+QUESTION,What size is the green thing?
+INPUT_CLEVR_IMG, CLEVR_train_000684.png, ANSWER, small
+INPUT_CLEVR_IMG, CLEVR_train_000006.png, ANSWER, small
+INPUT_CLEVR_IMG, CLEVR_train_000407.png, ANSWER, large
+INPUT_CLEVR_IMG, CLEVR_train_000198.png, ANSWER, large
+INPUT_CLEVR_IMG, CLEVR_train_000646.png, ANSWER, large
+TEMPLATE_INDEX, 1_zero_hop.json_5
+INDEX, 27,
+QUESTION,How big is the gray thing?
+INPUT_CLEVR_IMG, CLEVR_train_000210.png, ANSWER, small
+INPUT_CLEVR_IMG, CLEVR_train_000243.png, ANSWER, small
+INPUT_CLEVR_IMG, CLEVR_train_000060.png, ANSWER, large
+INPUT_CLEVR_IMG, CLEVR_train_000446.png, ANSWER, small
+INPUT_CLEVR_IMG, CLEVR_train_000410.png, ANSWER, small
+
+

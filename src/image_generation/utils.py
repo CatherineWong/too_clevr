@@ -74,7 +74,7 @@ def set_layer(obj, layer_idx):
     obj.layers[i] = (i == layer_idx)
 
 
-def add_object(object_dir, name, scale, loc, theta=0):
+def add_object(object_dir, name, scale, loc, theta=0, xyz=None):
   """
   Load an object from a file. We assume that in the directory object_dir, there
   is a file named "$name.blend" which contains a single object named "$name"
@@ -97,13 +97,21 @@ def add_object(object_dir, name, scale, loc, theta=0):
   # Give it a new name to avoid conflicts
   new_name = '%s_%d' % (name, count)
   bpy.data.objects[name].name = new_name
+  print("Placing object %s" % new_name)
 
   # Set the new object as active, then rotate, scale, and translate it
-  x, y = loc
-  bpy.context.scene.objects.active = bpy.data.objects[new_name]
+ 
+  bpy.context.scene.objects.active = bpy.data.objects[new_name] # Changed in Blender 2.82
   bpy.context.object.rotation_euler[2] = theta
   bpy.ops.transform.resize(value=(scale, scale, scale))
-  bpy.ops.transform.translate(value=(x, y, scale))
+  if loc is not None:
+       x, y = loc
+       bpy.ops.transform.translate(value=(x, y, scale))
+  elif xyz is not None:
+      bpy.context.object.location = xyz
+  else:
+    print("No way to place object.")
+    assert False
 
 
 def load_materials(material_dir):
@@ -161,7 +169,7 @@ def add_material(name, **properties):
   # Find and set the "Color" input of the new group node
   for inp in group_node.inputs:
     if inp.name in properties:
-      inp.default_value = properties[inp.name]
+      inp.default_value = tuple(properties[inp.name])
 
   # Wire the output of the new group node to the input of
   # the MaterialOutput node

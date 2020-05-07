@@ -1,0 +1,108 @@
+
+
+
+
+TEMPLATE_INDEX, 2_transform.json_2
+INDEX, 27,
+QUESTION,If all of the large green metal spheres became blue, how many blue things would there be?
+INPUT_CLEVR_IMG, CLEVR_train_000459.png, ANSWER, 1
+INPUT_CLEVR_IMG, CLEVR_train_000250.png, ANSWER, 1
+INPUT_CLEVR_IMG, CLEVR_train_000845.png, ANSWER, 2
+INPUT_CLEVR_IMG, CLEVR_train_000210.png, ANSWER, 0
+INPUT_CLEVR_IMG, CLEVR_train_000152.png, ANSWER, 1
+TEMPLATE_INDEX, 2_transform.json_2
+INDEX, 23,
+QUESTION,If all of the large brown things became cyan, how many cyan things would there be?
+INPUT_CLEVR_IMG, CLEVR_train_000383.png, ANSWER, 1
+INPUT_CLEVR_IMG, CLEVR_train_000460.png, ANSWER, 1
+INPUT_CLEVR_IMG, CLEVR_train_000459.png, ANSWER, 1
+INPUT_CLEVR_IMG, CLEVR_train_000854.png, ANSWER, 2
+INPUT_CLEVR_IMG, CLEVR_train_000322.png, ANSWER, 2
+TEMPLATE_INDEX, 2_transform.json_2
+INDEX, 20,
+QUESTION,If all of the small rubber things became green, how many green things would there be?
+INPUT_CLEVR_IMG, CLEVR_train_000210.png, ANSWER, 2
+INPUT_CLEVR_IMG, CLEVR_train_000417.png, ANSWER, 7
+INPUT_CLEVR_IMG, CLEVR_train_000383.png, ANSWER, 4
+INPUT_CLEVR_IMG, CLEVR_train_000120.png, ANSWER, 3
+INPUT_CLEVR_IMG, CLEVR_train_000695.png, ANSWER, 4
+
+
+TEMPLATE_INDEX, 2_transform.json_3
+INDEX, 32,
+QUESTION,If all of the brown things became rubber, how many rubber things would there be?
+INPUT_CLEVR_IMG, CLEVR_train_000459.png, ANSWER, 0
+INPUT_CLEVR_IMG, CLEVR_train_000559.png, ANSWER, 0
+INPUT_CLEVR_IMG, CLEVR_train_000099.png, ANSWER, 0
+INPUT_CLEVR_IMG, CLEVR_train_000854.png, ANSWER, 0
+INPUT_CLEVR_IMG, CLEVR_train_000504.png, ANSWER, 0
+TEMPLATE_INDEX, 2_transform.json_3
+INDEX, 34,
+QUESTION,If all of the small metal cylinders became rubber, how many rubber things would there be?
+INPUT_CLEVR_IMG, CLEVR_train_000460.png, ANSWER, 0
+INPUT_CLEVR_IMG, CLEVR_train_000417.png, ANSWER, 0
+INPUT_CLEVR_IMG, CLEVR_train_000069.png, ANSWER, 0
+INPUT_CLEVR_IMG, CLEVR_train_000459.png, ANSWER, 0
+INPUT_CLEVR_IMG, CLEVR_train_000695.png, ANSWER, 0
+TEMPLATE_INDEX, 2_transform.json_3
+INDEX, 38,
+QUESTION,If all of the large blue things became metal, how many metal things would there be?
+INPUT_CLEVR_IMG, CLEVR_train_000878.png, ANSWER, 0
+INPUT_CLEVR_IMG, CLEVR_train_000383.png, ANSWER, 0
+INPUT_CLEVR_IMG, CLEVR_train_000850.png, ANSWER, 0
+INPUT_CLEVR_IMG, CLEVR_train_000614.png, ANSWER, 0
+INPUT_CLEVR_IMG, CLEVR_train_000152.png, ANSWER, 0
+
+
+TEMPLATE_INDEX, 2_transform.json_4
+INDEX, 45,
+QUESTION,If all of the cyan rubber things became yellow cylinders, how many yellow cylinders would there be?
+INPUT_CLEVR_IMG, CLEVR_train_000152.png, ANSWER, 0
+INPUT_CLEVR_IMG, CLEVR_train_000854.png, ANSWER, 0
+INPUT_CLEVR_IMG, CLEVR_train_000322.png, ANSWER, 2
+INPUT_CLEVR_IMG, CLEVR_train_000850.png, ANSWER, 2
+INPUT_CLEVR_IMG, CLEVR_train_000504.png, ANSWER, 0
+TEMPLATE_INDEX, 2_transform.json_4
+INDEX, 44,
+QUESTION,If all of the small red rubber things became green spheres, how many green spheres would there be?
+INPUT_CLEVR_IMG, CLEVR_train_000504.png, ANSWER, 0
+INPUT_CLEVR_IMG, CLEVR_train_000850.png, ANSWER, 2
+INPUT_CLEVR_IMG, CLEVR_train_000878.png, ANSWER, 1
+INPUT_CLEVR_IMG, CLEVR_train_000559.png, ANSWER, 2
+INPUT_CLEVR_IMG, CLEVR_train_000459.png, ANSWER, 2
+TEMPLATE_INDEX, 2_transform.json_4
+INDEX, 47,
+QUESTION,If all of the large red cubes became cyan spheres, how many cyan spheres would there be?
+INPUT_CLEVR_IMG, CLEVR_train_000210.png, ANSWER, 1
+INPUT_CLEVR_IMG, CLEVR_train_000963.png, ANSWER, 3
+INPUT_CLEVR_IMG, CLEVR_train_000250.png, ANSWER, 1
+INPUT_CLEVR_IMG, CLEVR_train_000845.png, ANSWER, 1
+INPUT_CLEVR_IMG, CLEVR_train_000695.png, ANSWER, 1
+
+
+TEMPLATE_INDEX, 2_transform.json_5
+INDEX, 52,
+QUESTION,If all of the large blue things became small, how many large things would there be?
+INPUT_CLEVR_IMG, CLEVR_train_000559.png, ANSWER, 1
+INPUT_CLEVR_IMG, CLEVR_train_000460.png, ANSWER, 2
+INPUT_CLEVR_IMG, CLEVR_train_000504.png, ANSWER, 3
+INPUT_CLEVR_IMG, CLEVR_train_000250.png, ANSWER, 4
+INPUT_CLEVR_IMG, CLEVR_train_000069.png, ANSWER, 0
+TEMPLATE_INDEX, 2_transform.json_5
+INDEX, 55,
+QUESTION,If all of the large metal things became small, how many large things would there be?
+INPUT_CLEVR_IMG, CLEVR_train_000210.png, ANSWER, 2
+INPUT_CLEVR_IMG, CLEVR_train_000250.png, ANSWER, 0
+INPUT_CLEVR_IMG, CLEVR_train_000504.png, ANSWER, 2
+INPUT_CLEVR_IMG, CLEVR_train_000069.png, ANSWER, 0
+INPUT_CLEVR_IMG, CLEVR_train_000845.png, ANSWER, 1
+TEMPLATE_INDEX, 2_transform.json_5
+INDEX, 51,
+QUESTION,If all of the small brown rubber things became small, how many small things would there be?
+INPUT_CLEVR_IMG, CLEVR_train_000460.png, ANSWER, 3
+INPUT_CLEVR_IMG, CLEVR_train_000850.png, ANSWER, 7
+INPUT_CLEVR_IMG, CLEVR_train_000878.png, ANSWER, 5
+INPUT_CLEVR_IMG, CLEVR_train_000559.png, ANSWER, 3
+INPUT_CLEVR_IMG, CLEVR_train_000322.png, ANSWER, 4
+
+

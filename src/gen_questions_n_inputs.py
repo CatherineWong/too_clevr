@@ -24,7 +24,7 @@ parser.add_argument('--question_templates', default=basics,
                     help='Which question templates to generate for.')
 parser.add_argument('--instances_per_template', default=10, type=int,
     help="The number of times each template should be instantiated.")
-parser.add_argument('--n_scenes_per_question', default=5, type=int,
+parser.add_argument('--n_scenes_per_question', default=15, type=int,
     help="The number of scenes that serve as examples for each image.")
 parser.add_argument('--no_boolean', default=0, type=int, help='Whether to remove boolean questions from the dataset.')
 
@@ -108,7 +108,8 @@ def instantiate_templates_dfs(
                         answer_counts,
                         synonyms=[],
                         max_instances=1000,
-                        verbose=False)
+                        verbose=False,
+                        no_empty_filter=True)
         for i, tq in enumerate(ts):
             text_questions[tq].append((s, qs[i], ans[i])) 
         
@@ -202,39 +203,53 @@ def main(args):
     templates_items = list(templates.items())
     for i, ((fn, idx), template) in enumerate(templates_items):
         print(f'trying template {fn} {idx} : {i}/{len(templates_items)}') 
-        ts = instantiate_templates_dfs(
-                        all_scenes,
-                        template,
-                        metadata,
-                        template_answer_counts[(fn, idx)],
-                        max_instances=args.instances_per_template,
-                        n_scenes_per_question=args.n_scenes_per_question)
-        for t in ts:
-            scenes, programs, answers = [spa[0] for spa in ts[t]], [spa[1] for spa in ts[t]], [spa[-1] for spa in ts[t]]
-            scene_fns = [scene['image_filename'] for scene in scenes]
-            img_indices = [int(os.path.splitext(scene_fn)[0].split('_')[-1]) for scene_fn in scene_fns]
-            
-            # Fix the programs as per the original code.
-            for p in programs:
-                for f in p:
-                  if 'side_inputs' in f:
-                    f['value_inputs'] = f['side_inputs']
-                    del f['side_inputs']
-                  else:
-                    f['value_inputs'] = []
-            
-            questions.append({
-                'split': scene_info['split'],
-                'question': t,
-                'template_filename': fn,
-                'template_index': idx,
-                'question_index': len(questions),
-                'image_filenames' : scene_fns,
-                'image_indices' : img_indices,
-                'answers' : answers,
-                'program' : programs
-            })
-    
+        max_tries = 5
+        curr_try = 0
+        qs_per_template = 0
+        while True:
+            print(f"Now on try: {curr_try}")
+            ts = instantiate_templates_dfs(
+                            all_scenes,
+                            template,
+                            metadata,
+                            template_answer_counts[(fn, idx)],
+                            max_instances=args.instances_per_template,
+                            n_scenes_per_question=args.n_scenes_per_question)
+            for t in ts:
+                scenes, programs, answers = [spa[0] for spa in ts[t]], [spa[1] for spa in ts[t]], [spa[-1] for spa in ts[t]]
+                scene_fns = [scene['image_filename'] for scene in scenes]
+                img_indices = [int(os.path.splitext(scene_fn)[0].split('_')[-1]) for scene_fn in scene_fns]
+                
+                # Fix the programs as per the original code.
+                for p in programs:
+                    for f in p:
+                      if 'side_inputs' in f:
+                        f['value_inputs'] = f['side_inputs']
+                        del f['side_inputs']
+                      else:
+                        f['value_inputs'] = []
+                
+                # Don't allow all the answers to be the same
+                if type(answers[0]) is not dict and len(set(answers)) < 2:
+                    continue
+                elif qs_per_template >= args.instances_per_template:
+                    continue
+                else:
+                    questions.append({
+                        'split': scene_info['split'],
+                        'question': t,
+                        'template_filename': fn,
+                        'template_index': idx,
+                        'question_index': len(questions),
+                        'image_filenames' : scene_fns,
+                        'image_indices' : img_indices,
+                        'answers' : answers,
+                        'program' : programs
+                    })
+                    qs_per_template += 1
+            curr_try += 1
+            if qs_per_template >= args.instances_per_template or curr_try >= max_tries:
+                break
     print(f"Generated {len(questions)} questions!")
     with open(args.output_questions_file, 'w') as f:
       print('Writing output to %s' % args.output_questions_file)

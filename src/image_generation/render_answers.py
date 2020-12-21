@@ -60,7 +60,7 @@ parser.add_argument("--render_inputs", default=1, type=int,
                     
 parser.add_argument('--input_questions_dir', default='/Users/catwong/Desktop/zyzzyva/code/too_clevr/data/clevr_dreams/questions',
     help="The base directory containing question files to render images for.")
-parser.add_argument('--input_questions_file', default='CLEVR_extended_questions',
+parser.add_argument('--input_questions_file', default='CLEVR_val_2_transform',
     help="The base directory containing question files to render images for.")
 parser.add_argument('--output_image_dir', default='/Users/catwong/Desktop/zyzzyva/code/too_clevr/data/clevr_dreams/images',
     help="The base directory where output images will be stored. It will be " +
@@ -105,7 +105,8 @@ def render_scene(args,
                 scene,
                 question_index,
                 answer_index,
-                output_img):
+                output_img,
+                output_blendfile=None):
     # Load the main blendfile
     bpy.ops.wm.open_mainfile(filepath=args.base_scene_blendfile)
 
@@ -227,6 +228,7 @@ def main(args):
 
     # Render scenes.
     questions_log = ""
+    text_questions = {}
     for i, template_idx in enumerate(qs_per_template):
         for j, q_idx in enumerate(qs_per_template[template_idx]):
             print("Now on scene %d / %d of %d / %d templates" % (
@@ -236,29 +238,29 @@ def main(args):
                 len(qs_per_template)
             ))
             question = questions['questions'][q_idx]
-            
             if type(question['answers'][0]) is not dict:
                 continue
             print("...found answer templates to render.")
-            print("Rendering for: %s" % question[0])
+            print("Rendering for: %s" %  question['question'])
             # For convenience, we will store and log the text questions
             text_questions[q_idx] = question['question']
             questions_log += "INDEX, %d,\n" % q_idx
             questions_log += "QUESTION,"+question['question'][0] + "\n"
             
-            if args.render_inputs:
-                # Find and render the input scenes.
-                img_path = img_input_template % (q_idx, k)
-                questions_log += "IMG_INPUT,%s\n" % os.path.basename(img_path)
+            # if args.render_inputs:
+            #     # Find and render the input scenes.
+            #     img_path = img_input_template % (q_idx, k)
+            #     questions_log += "IMG_INPUT,%s\n" % os.path.basename(img_path)
             
             for k, scene in enumerate(question['answers']):
                 img_path = img_answer_template % (q_idx, k)
                 questions_log += "IMG_ANSWER,%s\n" % os.path.basename(img_path)
-                # render_scene(args,
-                #             scene,
-                #             question_index=q_idx,
-                #             answer_index=k,
-                #             output_img=img_path)
+                render_scene(args,
+                            scene,
+                            question_index=q_idx,
+                            answer_index=k,
+                            output_img=img_path)
+                if k > 0: break
             
 
 if __name__ == '__main__':

@@ -104,7 +104,8 @@ def instantiate_templates_dfs(
                         answer_counts=defaultdict(),
                         synonyms=[],
                         max_instances=max_instances,
-                        verbose=False)
+                        verbose=False,
+                        no_empty_filter=True)
         
         for i, tq in enumerate(ts):
             filter_options, filter_program = extract_filter_options(qs[i])

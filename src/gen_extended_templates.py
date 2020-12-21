@@ -11,7 +11,7 @@ parser.add_argument('--template_dir', default='data/clevr_dreams/question_templa
     help="Directory containing JSON templates for questions")
 
 def main(args):
-    fn = "2_curriculum"
+    fn = "2_localization_train"
     questions = [
     {"text": ["Find the <Z> things."],
     "group": "multiple",
@@ -70,6 +70,82 @@ def main(args):
      "constraints": {"filter" : "choose_exactly"}
     },
     
+        {"text": ["Find the <Z> <C> <M> <S>."],
+        "group": "unique",
+        "nodes": [
+          {"type": "scene",
+          "inputs": [],
+          },
+          {"type": "filter",
+           "inputs": [0],
+           "side_inputs": ["<Z>", "<C>", "<M>", "<S>"],
+         },
+        ],
+        "params" : [{"type": "Size", "name": "<Z>"}, {"type": "Color", "name": "<C>"}, {"type": "Material", "name": "<M>"}, {"type": "Shape", "name": "<S>"}, {"type": "Relation", "name": "<R>"}, {"type": "Size", "name": "<Z2>"}, {"type": "Color", "name": "<C2>"}, {"type": "Material", "name": "<M2>"}, {"type": "Shape", "name": "<S2>"}],
+         "constraints": {}
+        },
+        {"text": ["Find the <Z> <C> <M> <S>."],
+        "group": "unique",
+        "nodes": [
+          {"type": "scene",
+          "inputs": [],
+          },
+          {"type": "filter",
+           "inputs": [0],
+           "side_inputs": ["<Z>", "<C>", "<M>", "<S>"],
+         },
+        ],
+        "params" : [{"type": "Size", "name": "<Z>"}, {"type": "Color", "name": "<C>"}, {"type": "Material", "name": "<M>"}, {"type": "Shape", "name": "<S>"}, {"type": "Relation", "name": "<R>"}, {"type": "Size", "name": "<Z2>"}, {"type": "Color", "name": "<C2>"}, {"type": "Material", "name": "<M2>"}, {"type": "Shape", "name": "<S2>"}],
+         "constraints": {}
+        },
+        {"text": ["Find the <Z> <C> <M> <S>."],
+        "group": "unique",
+        "nodes": [
+          {"type": "scene",
+          "inputs": [],
+          },
+          {"type": "filter",
+           "inputs": [0],
+           "side_inputs": ["<Z>", "<C>", "<M>", "<S>"],
+         },
+        ],
+        "params" : [{"type": "Size", "name": "<Z>"}, {"type": "Color", "name": "<C>"}, {"type": "Material", "name": "<M>"}, {"type": "Shape", "name": "<S>"}, {"type": "Relation", "name": "<R>"}, {"type": "Size", "name": "<Z2>"}, {"type": "Color", "name": "<C2>"}, {"type": "Material", "name": "<M2>"}, {"type": "Shape", "name": "<S2>"}],
+         "constraints": {}
+        },
+    ]
+    with open(os.path.join(args.template_dir, fn + '.json'), 'w') as f:
+        json.dump(questions, f)
+    
+    fn = "2_localization_val"
+    questions = [
+        {"text": ["Find the <Z> <C> <M> <S>."],
+        "group": "unique",
+        "nodes": [
+          {"type": "scene",
+          "inputs": [],
+          },
+          {"type": "filter",
+           "inputs": [0],
+           "side_inputs": ["<Z>", "<C>", "<M>", "<S>"],
+         },
+        ],
+        "params" : [{"type": "Size", "name": "<Z>"}, {"type": "Color", "name": "<C>"}, {"type": "Material", "name": "<M>"}, {"type": "Shape", "name": "<S>"}, {"type": "Relation", "name": "<R>"}, {"type": "Size", "name": "<Z2>"}, {"type": "Color", "name": "<C2>"}, {"type": "Material", "name": "<M2>"}, {"type": "Shape", "name": "<S2>"}],
+         "constraints": {}
+        },
+        {"text": ["Find the <Z> <C> <M> <S>."],
+        "group": "unique",
+        "nodes": [
+          {"type": "scene",
+          "inputs": [],
+          },
+          {"type": "filter",
+           "inputs": [0],
+           "side_inputs": ["<Z>", "<C>", "<M>", "<S>"],
+         },
+        ],
+        "params" : [{"type": "Size", "name": "<Z>"}, {"type": "Color", "name": "<C>"}, {"type": "Material", "name": "<M>"}, {"type": "Shape", "name": "<S>"}, {"type": "Relation", "name": "<R>"}, {"type": "Size", "name": "<Z2>"}, {"type": "Color", "name": "<C2>"}, {"type": "Material", "name": "<M2>"}, {"type": "Shape", "name": "<S2>"}],
+         "constraints": {}
+        },
         {"text": ["Find the <Z> <C> <M> <S>."],
         "group": "unique",
         "nodes": [

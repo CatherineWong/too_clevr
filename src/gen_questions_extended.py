@@ -163,6 +163,9 @@ def instantiate_template(
                                             input_scene, all_outputs=False, cache_outputs=False)
     
         answers.append(ans)
+    # Don't allow the answers to all be identical
+    if type(answers[0]) is not dict and len(set(answers)) < 2:
+        return [], None, None, None
     return instantiated_text, program, input_scenes, answers
         
 def instantiate_templates_extended(all_input_scenes,

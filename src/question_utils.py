@@ -238,7 +238,8 @@ def other_heuristic(text, param_vals):
 
 
 def instantiate_templates_dfs(scene_struct, template, metadata, answer_counts,
-                              synonyms, max_instances=None, verbose=False):
+                              synonyms, max_instances=None, verbose=False,
+                              no_empty_filter=True):
 
   param_name_to_type = {p['name']: p['type'] for p in template['params']} 
 
@@ -364,14 +365,16 @@ def instantiate_templates_dfs(scene_struct, template, metadata, answer_counts,
           filter_options = {k: v for k, v in filter_options.items()
                             if len(v) == 1}
         else:
-          # Add some filter options that do NOT correspond to the scene
-          if next_node['type'] == 'filter_exist':
-            # For filter_exist we want an equal number that do and don't
-            num_to_add = len(filter_options)
-          elif next_node['type'] == 'filter_count' or next_node['type'] == 'filter':
-            # For filter_count add nulls equal to the number of singletons
-            num_to_add = sum(1 for k, v in filter_options.items() if len(v) == 1)
-          add_empty_filter_options(filter_options, metadata, num_to_add)
+          # For our purposes we don't want empty filter options.
+          if not no_empty_filter:
+              # Add some filter options that do NOT correspond to the scene
+              if next_node['type'] == 'filter_exist':
+                # For filter_exist we want an equal number that do and don't
+                num_to_add = len(filter_options)
+              elif next_node['type'] == 'filter_count' or next_node['type'] == 'filter':
+                # For filter_count add nulls equal to the number of singletons
+                num_to_add = sum(1 for k, v in filter_options.items() if len(v) == 1)
+              add_empty_filter_options(filter_options, metadata, num_to_add)
 
       filter_option_keys = list(filter_options.keys())
       random.shuffle(filter_option_keys)

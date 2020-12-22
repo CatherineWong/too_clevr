@@ -1,10 +1,20 @@
-import argparse, json, os, itertools, random, shutil
-import time
-import re
-import question_engine as qeng
-import question_utils as qutils
-from collections import defaultdict, Counter
-"""Generate the extended question templates"""
+import argparse, json, os
+"""
+gen_extended_templates.py | Author : Catherine Wong
+
+This generates additional question CLEVR-style question templates. It is largely a pretty-formatted utility for  creating JSON files. It outputs files to a provided template directory.
+
+Templates are an array of questions of the form:
+{
+    "text" : [<type: string; example '"Find the <Z> things."'],
+    "group"
+}
+
+The original templates and format are taken from the CLEVR_1.0_templates JSON format by Justin Johnson: https://github.com/facebookresearch/clevr-dataset-gen/tree/master/question_generation 
+
+
+Example usage: python3 gen_exten
+"""
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--template_dir', default='data/clevr_dreams/question_templates',

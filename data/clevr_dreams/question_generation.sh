@@ -1,3 +1,5 @@
+# Script to replicate the questions generated for the NeurIPS 2020 original CLEVR experiments.
+
 python3 src/gen_questions_extended.py --question_templates 2_localization_train --instances_per_template 10 --input_grouped_scenes_file data/clevr_dreams/grouped_scenes/grouped_CLEVR_train_questions_5000.json --output_questions_file data/clevr_dreams/questions/CLEVR_train_2_localization.json --input_scene_file data/clevr_dreams/scenes/CLEVR_train_scenes_5000.json
 
 python3 src/gen_questions_extended.py --question_templates 2_localization_val --instances_per_template 3 --input_grouped_scenes_file data/clevr_dreams/grouped_scenes/grouped_CLEVR_val_questions_5000.json --output_questions_file data/clevr_dreams/questions/CLEVR_val_2_localization.json --input_scene_file data/clevr_dreams/scenes/CLEVR_val_scenes_5000.json

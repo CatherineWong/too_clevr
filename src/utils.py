@@ -2,6 +2,11 @@
 import argparse, json, os, itertools, random, shutil
 from pathlib import Path
 
+"""utils.py | Author: Catherine Wong.
+This contains utilities to:
+    Generate a set of shared input scenes used across the various questsion.
+"""
+
 parser = argparse.ArgumentParser()
 
 ### Generate scene subsets

@@ -2,13 +2,10 @@ import json, os, math, copy
 from collections import defaultdict
 
 """
-Extended question handler, which handles scenes involving counterfactuals and 
-other CLEVR-Humans inspired questions.
-Draws closely on: https://github.com/facebookresearch/clevr-dataset-gen
-Utilities for working with function program representations of questions.
-
-Some of the metadata about what question node types are available etc are stored
-in a JSON metadata file.
+extended_question_engine.py | Author: Catherine Wong.
+Execution engine for the extended CLEVR dataset.
+This file is based on question_engine.py by Justin Johnson, in the original CLEVR questions dataset.
+It contains augmented functions for new primitives in the extended CLEVR.
 """
 
 def scene_handler(scene_struct, inputs, side_inputs):

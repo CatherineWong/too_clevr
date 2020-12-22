@@ -1,5 +1,18 @@
 """
-Generate questions with n I/O examples per scene.
+gen_questions_n_inputs.py | Author: Catherine Wong.
+
+This generates program-induction style versions of the original CLEVR templates, which now have n scene inputs, rather than just one.
+
+It requires question_templates JSON files, and a common set of scenes to reference.
+
+Example usage:
+python3 gen_questions_n_inputs.py --default_train_scenes
+    --question_templates 1_zero_hop 1_one_hop
+    --instances_per_template 10
+    --n_scenes_per_question 10
+    --no_boolean 1
+    --output_questions_directory ../data/clevr_dreams/questions
+    
 """
 import argparse, json, os, itertools, random, shutil
 import time
@@ -8,91 +21,138 @@ import question_engine as qeng
 import question_utils as qutils
 from collections import defaultdict, Counter
 
-parser = argparse.ArgumentParser()
+DEFAULT_TRAIN_SCENES = "../metadata/clevr_shared_metadata/scenes/CLEVR_train_scenes_5000.json"
+DEFAULT_VAL_SCENES = "../metadata/clevr_shared_metadata/scenes/CLEVR_val_scenes_5000.json"
+DEFAULT_QUESTION_METADATA = "../metadata/clevr_original_metadata/1_metadata.json"
 
-basics = ['1_zero_hop', '1_one_hop', '1_compare_integer',  '1_single_or', '1_same_relate']
+DEFAULT_ORIGINAL_TEMPLATES_DIR = "../metadata/clevr_original_metadata/question_templates"
 
 # Template restrictions based on which questions can feasibly generate n inputs.
-template_restrictions = {
+TEMPLATE_RESTRICTED_QUESTIONS = {
     '1_single_or' : [0, 1, 2, 4, 5],
     '1_compare_integer' : [0, 1, 2],
 }
 
-# Control the number of tasks we generate
-parser.add_argument('--question_templates', default=basics,
+parser = argparse.ArgumentParser()
+parser.add_argument('--random_seed', default=0)
+
+# Arguments for the scenes used to generate inputs.
+parser.add_argument('--default_train_scenes', help="If provided, we use a default set of training scenes.", action='store_true')
+parser.add_argument('--default_val_scenes', help="If provided, we use a default set of validation scenes.", action='store_true')
+parser.add_argument('--input_scene_file', 
+    help="If provided, we reference a specific set of input scenes.")
+
+# Which metadata file to use for the questions.
+parser.add_argument('--metadata_file', default=DEFAULT_QUESTION_METADATA, help="JSON file containing metadata about functions")
+
+# Arguments used to determine which question templates to use. 
+parser.add_argument('--template_dir', default=DEFAULT_ORIGINAL_TEMPLATES_DIR, help="Directory containing JSON templates for questions")
+parser.add_argument('--question_templates', 
                     nargs='*',
                     help='Which question templates to generate for.')
+
+# Arguments that determine parameters of the questions we generate.       
 parser.add_argument('--instances_per_template', default=10, type=int,
     help="The number of times each template should be instantiated.")
-parser.add_argument('--n_scenes_per_question', default=15, type=int,
+parser.add_argument('--n_scenes_per_question', default=10, type=int,
     help="The number of scenes that serve as examples for each image.")
 parser.add_argument('--no_boolean', default=0, type=int, help='Whether to remove boolean questions from the dataset.')
+parser.add_argument('--max_generation_tries_per_instantiation', default=5, type=int, help="The number of randomized attempts we will take to instantiate a given question template.") 
+parser.add_argument('--max_time_to_instantiate', default=100, type=int, help="The amount of time to spend attempting to instantiate on a given try.") 
 
-# File handling.
-parser.add_argument('--output_questions_file', default='data/clevr_dreams/questions/CLEVR_train_questions_1000.json',
-    help="JSON file containing ground-truth scene information for all images " +
-         "from render_images.py")
-parser.add_argument('--input_scene_file', default='data/clevr_dreams/scenes/CLEVR_train_scenes_1000.json',
-    help="JSON file containing ground-truth scene information for all images " +
-         "from render_images.py")
-parser.add_argument('--metadata_file', default='data/clevr_dreams/1_metadata.json',
-    help="JSON file containing metadata about functions")
-parser.add_argument('--template_dir', default='data/clevr_dreams/question_templates',
-    help="Directory containing JSON templates for questions")
+# Arguments to determine where we write and store the output questions.
+parser.add_argument('--output_questions_directory',
+    help="Directory in which to write out the generated questions.",
+    required=True)
+parser.add_argument('--output_questions_prefix',
+    default="CLEVR",
+    help="If included, a different prefix for the output files.")
 
-def check_constraints(param_name_to_type, template, state, outputs, scene_idx):
-    # Check to make sure constraints are satisfied for the current state
-    skip_state = False
-    for constraint in template['constraints']:
-      if constraint['type'] == 'NEQ':
-        p1, p2 = constraint['params']
-        v1, v2 = state['vals'][scene_idx].get(p1), state['vals'][scene_idx].get(p2)
-        if v1 is not None and v2 is not None and v1 != v2:
-          if verbose:
-            print('skipping due to NEQ constraint')
-            print(constraint)
-            print(state['vals'])
-          skip_state = True
-          break
-      elif constraint['type'] == 'NULL':
-        p = constraint['params'][0]
-        p_type = param_name_to_type[p]
-        v = state['vals'][scene_idx].get(p)
-        if v is not None:
-          skip = False
-          if p_type == 'Shape' and v != 'thing': skip = True
-          if p_type != 'Shape' and v != '': skip = True
-          if skip:
-            if verbose:
-              print('skipping due to NULL constraint')
-              print(constraint)
-              print(state['vals'][scene_idx])
-            skip_state = True
-            break
-      elif constraint['type'] == 'OUT_NEQ':
-        i, j = constraint['params']
-        i = state['input_map'][scene_idx].get(i, None)
-        j = state['input_map'][scene_idx].get(j, None)
-        if i is not None and j is not None and outputs[scene_idx][i] == outputs[scene_idx][j]:
-          if verbose:
-            print('skipping due to OUT_NEQ constraint')
-            print(outputs[scene_idx][i])
-            print(outputs[scene_idx][j])
-          skip_state = True
-          break
-      else:
-        assert False, 'Unrecognized constraint type "%s"' % constraint['type']
-    return skip_state
+
+def set_random_seed(args):
+    seed = args.random_seed
+    print(f"Setting random seed to: {seed}")
+    random.seed(seed)
+
+def get_input_scenes(args):
+    if args.default_train_scenes:
+        assert(not args.default_val_scenes)
+        scenes_file = DEFAULT_TRAIN_SCENES
+    elif args.default_val_scenes:
+        assert(not args.default_train_scenes)
+        scenes_file = DEFAULT_VAL_SCENES
+    elif args.input_scene_file:
+        scenes_file = args.input_scene_file
+    else:
+        raise RuntimeError('No input scene file provided.')
     
-def instantiate_templates_dfs(
+    with open(scenes_file, 'r') as f:
+        scene_data = json.load(f)
+        all_scenes = scene_data['scenes']
+        scene_info = scene_data['info']
+    
+    print(f"Using [{len(all_scenes)}] scenes from {scenes_file}")
+    return scenes_file, all_scenes, scene_info
+
+def get_question_metadata(args):
+    with open(args.metadata_file, 'r') as f:
+      metadata = json.load(f)
+    functions_by_name = {}
+    boolean_functions = {}
+    for f in metadata['functions']:
+      functions_by_name[f['name']] = f
+      if f['output'] == 'Bool':
+          boolean_functions[f['name']] = f
+    metadata['_functions_by_name'] = functions_by_name
+    metadata['_boolean_fns'] = boolean_functions
+    
+    return metadata
+
+def get_question_templates(args, metadata):
+    """Returns a dictionary of question templates for each file containing templates on a partiular question class: {template_filename :
+        {(template_filename, original_question_idx): template}
+    }"""
+    
+    templates = dict()
+    for question_template_file in args.question_templates:
+        templates[question_template_file] = dict()
+        
+        full_template_filepath = os.path.join(args.template_dir, question_template_file + ".json")
+        
+        num_skipped_boolean_questions = 0
+        with open(full_template_filepath, 'r') as f:
+            question_templates = json.load(f)
+            for question_idx, template in enumerate(question_templates):
+                # We include a subset of these questions, as the others tend to hang for rejection sampling.
+                if question_template_file in TEMPLATE_RESTRICTED_QUESTIONS:
+                    if question_idx not in TEMPLATE_RESTRICTED_QUESTIONS[question_template_file]: continue
+                
+                # We can skip Boolean questions, which are underconstrained.
+                is_boolean_question = template['nodes'][-1]['type'] in metadata['_boolean_fns']
+                if bool(args.no_boolean) and is_boolean_question:
+                    question_text = template['text'][0]
+                    print(f"Skipping boolean question: {question_text}")
+                    num_skipped_boolean_questions += 1
+                    continue
+                    
+                template_key = (question_template_file, question_idx)
+                templates[question_template_file][template_key] = template
+            print(f'Read {len(templates[question_template_file])} question templates from {full_template_filepath}, skipped {num_skipped_boolean_questions} boolean templates.')
+    return templates
+
+def instantiate_templates_dfs_multiple_inputs(
                 all_scenes,
                 template,
                 metadata,
-                answer_counts,
-                max_instances=None,
+                answer_counts, # Holdover to allow answer distribution.
+                max_instances=None, # Maximum instances of this teplate.
                 n_scenes_per_question=None,
                 max_time=100):
-    
+    """
+    Attempts to generate text questions that are valid for a set of n_scenes_per_question inputs.
+    Uses a direct generalization of the original CLEVR instatiate_templates_qs code and simply reorganizes to attempt to generate multiple inputs per question.
+    Returns {question_text : [(scene, structured_question, structured_answer)]}.
+    """
     tic = time.time()
     text_questions = defaultdict(list)
     
@@ -101,15 +161,19 @@ def instantiate_templates_dfs(
     # Just try instantiating the questions for a set of scenes.
     for i, s in enumerate(all_scenes):
         if i > 0 and i % 100 == 0: print(f"On scene [{i}/{len(all_scenes)}]")
+        # This generates a combinatorial set of valid questions for a given scene. 
+        # It returns a set of text questions, structured questions, and answer objects.
         ts, qs, ans = qutils.instantiate_templates_dfs(
                         s,
                         template,
                         metadata,
-                        answer_counts,
+                        answer_counts, # This is deprecated and not used.
                         synonyms=[],
                         max_instances=1000,
                         verbose=False,
                         no_empty_filter=True)
+        
+        # We index the set of questions 
         for i, tq in enumerate(ts):
             text_questions[tq].append((s, qs[i], ans[i])) 
         
@@ -131,133 +195,140 @@ def instantiate_templates_dfs(
     } 
     return text_questions
 
-def main(args):
-    with open(args.metadata_file, 'r') as f:
-      metadata = json.load(f)
-      dataset = metadata['dataset']
-    functions_by_name = {}
-    boolean_functions = {}
-    for f in metadata['functions']:
-      functions_by_name[f['name']] = f
-      if f['output'] == 'Bool':
-          boolean_functions[f['name']] = f
-    metadata['_functions_by_name'] = functions_by_name
-    metadata['_boolean_fns'] = boolean_functions
+def postprocess_instantiated_questions(instantiated_questions,
+dataset_split, template_filename, template_index):
+    """
+    Post-processing on the set of questions generated by instantiate_templates_dfs_multiple_inputs.
     
-    # Load templates from disk
-    # Key is (filename, file_idx)
-    num_loaded_templates = 0
-    num_bool = 0
-    templates = {}
-    for fn in os.listdir(args.template_dir):
-      basename = os.path.basename(fn.split('.json')[0])
-      if not fn.endswith('.json'): continue
-      if args.question_templates is not None and basename not in args.question_templates:
-          continue
-      with open(os.path.join(args.template_dir, fn), 'r') as f:
-        base = os.path.splitext(fn)[0]
-        for i, template in enumerate(json.load(f)):
-            if basename in template_restrictions:
-                if i not in template_restrictions[basename]: continue
-            if bool(args.no_boolean) and template['nodes'][-1]['type'] in metadata['_boolean_fns']:
-                num_bool += 1
-                continue
-            else:
-              num_loaded_templates += 1
-              key = (fn, i)
-              templates[key] = template
-    print(f'Read {num_loaded_templates} templates from disk, skipped {num_bool} boolean templates.')
+    Runs checks to remove degenerate questions.
     
-    # Read file containing input scenes
-    all_scenes = []
-    with open(args.input_scene_file, 'r') as f:
-      scene_data = json.load(f)
-      all_scenes = scene_data['scenes']
-      scene_info = scene_data['info']
-      
-    def reset_counts():
-      # Maps a template (filename, index) to the number of questions we have
-      # so far using that template
-      template_counts = {}
-      # Maps a template (filename, index) to a dict mapping the answer to the
-      # number of questions so far of that template type with that answer
-      template_answer_counts = {}
-      node_type_to_dtype = {n['name']: n['output'] for n in metadata['functions']}
-      for key, template in templates.items():
-        template_counts[key[:2]] = 0
-        final_node_type = template['nodes'][-1]['type']
-        final_dtype = node_type_to_dtype[final_node_type]
-        answers = metadata['types'][final_dtype]
-        if final_dtype == 'Bool':
-          answers = [True, False]
-        if final_dtype == 'Integer':
-          if metadata['dataset'] == 'CLEVR-v1.0':
-            answers = list(range(0, 11))
-        template_answer_counts[key[:2]] = {}
-        for a in answers:
-          template_answer_counts[key[:2]][a] = 0
-      return template_counts, template_answer_counts
-    template_counts, template_answer_counts = reset_counts()
-    
-    questions = []
-    templates_items = list(templates.items())
-    for i, ((fn, idx), template) in enumerate(templates_items):
-        print(f'trying template {fn} {idx} : {i}/{len(templates_items)}') 
-        max_tries = 5
-        curr_try = 0
-        qs_per_template = 0
-        while True:
-            print(f"Now on try: {curr_try}")
-            ts = instantiate_templates_dfs(
-                            all_scenes,
-                            template,
-                            metadata,
-                            template_answer_counts[(fn, idx)],
-                            max_instances=args.instances_per_template,
-                            n_scenes_per_question=args.n_scenes_per_question)
-            for t in ts:
-                scenes, programs, answers = [spa[0] for spa in ts[t]], [spa[1] for spa in ts[t]], [spa[-1] for spa in ts[t]]
-                scene_fns = [scene['image_filename'] for scene in scenes]
-                img_indices = [int(os.path.splitext(scene_fn)[0].split('_')[-1]) for scene_fn in scene_fns]
-                
-                # Fix the programs as per the original code.
-                for p in programs:
-                    for f in p:
-                      if 'side_inputs' in f:
-                        f['value_inputs'] = f['side_inputs']
-                        del f['side_inputs']
-                      else:
-                        f['value_inputs'] = []
-                
-                # Don't allow all the answers to be the same
-                if type(answers[0]) is not dict and len(set(answers)) < 2:
-                    continue
-                elif qs_per_template >= args.instances_per_template:
-                    continue
-                else:
-                    questions.append({
-                        'split': scene_info['split'],
-                        'question': t,
-                        'template_filename': fn,
-                        'template_index': idx,
-                        'question_index': len(questions),
-                        'image_filenames' : scene_fns,
-                        'image_indices' : img_indices,
-                        'answers' : answers,
-                        'program' : programs
-                    })
-                    qs_per_template += 1
-            curr_try += 1
-            if qs_per_template >= args.instances_per_template or curr_try >= max_tries:
-                break
-    print(f"Generated {len(questions)} questions!")
-    with open(args.output_questions_file, 'w') as f:
-      print('Writing output to %s' % args.output_questions_file)
-      json.dump({
-          'info': scene_info,
-          'questions': questions,
-        }, f)
+    Takes: {question_text : [(scene, structured_question, structured_answer)]}.
+    Turns the questions into a single, structured dictionary object in the original CLEVR-questions format.
+    """
+    post_processed_questions = []
+    for question_text in instantiated_questions:
+        # Unpack the scenes / programs / answers for a given question.
+        scenes, programs, answers = [spa[0] for spa in instantiated_questions[question_text]], [spa[1] for spa in instantiated_questions[question_text]], [spa[-1] for spa in instantiated_questions[question_text]]
+        image_filenames = [scene['image_filename'] for scene in scenes]
+        img_indices = [int(os.path.splitext(scene_fn)[0].split('_')[-1]) for scene_fn in image_filenames]
         
+        # Post-hoc renaming convention from the original Johnson et. al code.
+        for p in programs:
+            for f in p:
+              if 'side_inputs' in f:
+                f['value_inputs'] = f['side_inputs']
+                del f['side_inputs']
+              else:
+                f['value_inputs'] = []
+        
+        # Degeneracy check: don't allow all the answers to be the same
+        if type(answers[0]) is not dict and len(set(answers)) < 2:
+            continue
+        else:
+            post_processed_questions.append({
+                'split': dataset_split,
+                'question': question_text,
+                'template_filename': template_filename,
+                'template_index': template_index,
+                'question_index': None, # Will assign later.
+                'image_filenames' :image_filenames,
+                'image_indices' : img_indices,
+                'answers' : answers,
+                'program' : programs
+            })
+    return post_processed_questions
+
+def generate_questions_for_template_file(args, templates_for_file,
+    dataset_split, metadata, all_scenes):
+    """
+    Attempts to generate a set of questions for a single template file.
+    Takes a single dict containing the question templates for a particular file in the form:
+        {(template_filename, original_question_idx): template}
+        
+    For each question in the template file, attepts repeatedly to instantiate questions, up to a given number of tries.
+    Returns a list of questions indexed for that template.
+    """
+    max_tries = args.max_generation_tries_per_instantiation
+    max_time = args.max_time_to_instantiate
+    
+    generated_questions = []
+    templates_items = list(templates_for_file.items())
+    for i, ((template_filename, template_index), template) in enumerate(templates_items):
+        print(f'Trying question template {template_filename} {template_index} : {i}/{len(templates_items)} in this file.') 
+        
+        curr_try = 0
+        questions_for_template = []
+        while True:
+            print(f"For this template, currently on try: {curr_try} / {max_tries}")
+            
+            instantiated_questions = instantiate_templates_dfs_multiple_inputs(all_scenes=all_scenes,
+            template=template,
+            metadata=metadata,
+            max_time=max_time,
+            max_instances=args.instances_per_template,
+            n_scenes_per_question=args.n_scenes_per_question,
+            answer_counts=None)
+            
+            postprocessed_questions = postprocess_instantiated_questions(instantiated_questions,
+                dataset_split=dataset_split, template_filename=template_filename,
+                template_index=template_index)
+                
+            curr_try += 1
+            questions_for_template += postprocessed_questions
+            if len(questions_for_template) >= args.instances_per_template or curr_try >= max_tries:
+                generated_questions += questions_for_template[:args.instances_per_template]
+                break
+    # Add indices to all of the questions for this template.
+    for question_index, question in enumerate(generated_questions):
+        question['question_index'] = question_index
+    
+    print(f"Successfully generated {len(generated_questions)} questions.")
+    return generated_questions
+
+def generate_questions_for_all_template_files(args, all_templates,
+    dataset_split, metadata, all_scenes):
+    """
+    Generates a set of questions for a set of template files.
+    Attempts to generate a set of questions for a single template file.
+    Takes a dict containing the different template questions in the form:
+        {
+            template_filename: {(template_filename, original_question_idx): template}
+        }
+            
+    Returns {[template_filename] : [question_objects]}
+    """
+    all_generated_questions = {}
+    for template_filename in all_templates:
+        templates_for_file = all_templates[template_filename]
+        questions_for_file = generate_questions_for_template_file(args, templates_for_file,
+            dataset_split, metadata, all_scenes)
+        
+        all_generated_questions[template_filename] = questions_for_file
+    return all_generated_questions
+        
+def write_output_questions_files(args, scene_info, all_generated_questions):
+    split = scene_info['split']
+    for template_filename in all_generated_questions:
+        generated_questions_for_template = all_generated_questions[template_filename]
+        output_filename = os.path.join(args.output_questions_directory, f"{args.output_questions_prefix}_{split}_{template_filename}.json")
+        
+        with open(output_filename, 'w') as f:
+          print(f'Writing {len(generated_questions_for_template)} questions out to {output_filename}')
+          json.dump({
+              'info': scene_info,
+              'questions': generated_questions_for_template
+            }, f)
+
+def main(args):
+    set_random_seed(args)
+    scene_file, all_scenes, scene_info = get_input_scenes(args)
+    metadata = get_question_metadata(args)
+    all_question_templates = get_question_templates(args, metadata)
+
+    all_generated_questions = generate_questions_for_all_template_files(args,
+     all_question_templates, scene_info['split'], metadata, all_scenes)
+
+    write_output_questions_files(args, scene_info, all_generated_questions)
 
 if __name__ == '__main__':
   args = parser.parse_args()

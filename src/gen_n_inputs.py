@@ -103,6 +103,16 @@ def get_question_metadata(args):
     return metadata
 
 def get_grouping_templates(args):
+    """
+    Loads a 'grouping template' file consisting of questions that require instantiating a filter (or chain of filters) over scenes.
+    
+    Includes checks for this filter format.
+    Returns the loaded JSON file, which should be a dict of the form:
+    {
+        "unique": {[array of CLEVR question objects that filter for a unique object.]}
+        "multiple": {[array of CLEVR question objects that filter for a set of objects.]}
+    }
+    """
     with open(args.grouping_template_file, 'r') as f:
         all_grouping_templates = json.load(f)
     
@@ -124,13 +134,16 @@ def instantiate_template_with_filter_options(all_scenes,
                                             max_time,
                                             max_instances,
                                             n_scenes_per_question):
-    """Attempts to instantiate a template and extracts the specific filter attributes and the relevant program nodes from the question template.
+    """
+    Takes a template and a set of scenes.
+    Attempts to instantiate up to max_instances of the question with n_scenes_per_question inputs each, in order to extract the specific filter attributes and the relevant program nodes from the question template.
+    Instantiates up to max_instances of a given template.
     
     Returns a dictionary keyed by the original text question used to generate it, because unique questions correspond to a unique group of scenes with the same filter basis.
     {text_question: [array of len n_scenes_per_question of (scene, filter_options, filter_program) tuples.]}
     """
     tic = time.time()
-    text_questions = defaultdict(list)
+    all_text_questions = defaultdict(list)
     
     unique_scenes_per_text_question = Counter() # Keeps track of how many scenes have been instantiated so far for a given text question.
     
@@ -150,12 +163,14 @@ def instantiate_template_with_filter_options(all_scenes,
                         no_empty_filter=True)
         
         # Extract the attributes and program that we filter on for that query.
-        for text_question_index, text_question in enumerate(ts):
+        for text_question_index, text_question in enumerate(text_questions):
             filter_options, filter_program = extract_filter_options(programs[text_question_index])
-            text_questions[text_question].append((scene, filter_options, filter_program))
+            all_text_questions[text_question].append(
+                (scene, filter_options, filter_program)
+            )
             
         unique_scenes_per_text_question.update(text_questions)
-        questions_with_n_scenes = [q for q, count in unique_scenes_per_text_question.items() if count >= n_scenes_per_question] 
+        questions_with_n_scenes = [q for (q, count) in unique_scenes_per_text_question.items() if count >= n_scenes_per_question] 
         if len(questions_with_n_scenes) >= max_instances:
             break
         toc = time.time()
@@ -165,24 +180,26 @@ def instantiate_template_with_filter_options(all_scenes,
     # Randomly sample among the question in valid qs.
     final_candidate_questions = random.sample(questions_with_n_scenes, min(max_instances, len(questions_with_n_scenes)))
     # Randomly sample among the scenes for that question.
-    instantiated_questions = {
-        question : random.sample(text_questions[question], n_scenes_per_question)
+    instantiated_questions_with_filters = {
+        question : random.sample(all_text_questions[question], n_scenes_per_question)
         for question in final_candidate_questions
     } 
-    return instantiated_questions
+    return instantiated_questions_with_filters
 
 def extract_filter_options(program):
     """
-    Extracts the set of attributes on which we filtered, and the set of nodes doing the filtering, from a given instantiated program.
+    Takes in a CLEVR-style program, and then extracts both the filter_options (a list of attributes on which the program filters a scene) and the actual filter_program (the list of nodes used to filter on these attributes.)
     
-    Returns (tuple of (attribute_type, attribute)), (tuple of program nodes)
+    Takes a program as a  list of nodes.
+    Returns (sorted tuple of (attribute_type, attribute)), [array of program nodes]
+    Example: (("Color", "red"),), [program nodes]
     """
     filter_options = []
     filter_program = []
     for node in program:
         if node['type'].startswith("filter"):
-            attribute_type = node['type'].split("_")[1].title() # e.g. 'Color'
-            attribute = q['side_inputs'][0]  # e.g. 'Color'
+            attribute_type = node['type'].split("_")[1].title() # E.g. ("Color")
+            attribute = node['side_inputs'][0]  # e.g. 'red'
             filter_options.append((attribute_type, attribute))
         
         # Correct and add in the associated program, using the renaming convention 
@@ -209,13 +226,13 @@ def postprocess_instantiated_questions_into_grouped_scenes(
                 "input_image_filenames" : [string filenames],
                 "input_image_indexes" : [int indexes],
                 "filter_programs" : [
-                    [array of program nodes]
+                    [array of program nodes], 
                 ]
             }
         }
     """
     grouped_scenes = defaultdict()
-    for text_question in text_questions:
+    for text_question in instantiated_questions:
         # Instantiate a blank group object.
         group = {
             'filter_options': None,
@@ -224,7 +241,7 @@ def postprocess_instantiated_questions_into_grouped_scenes(
             'filter_programs' : [],
         }
         
-        for scene, filter_options, filter_program in text_questions[text_question]:
+        for scene, filter_options, filter_program in instantiated_questions[text_question]:
             # Set the filter option once.
             if group['filter_options'] is None:
                 group['filter_options'] = filter_options
@@ -247,13 +264,13 @@ def generate_grouped_scenes_for_question_template(
                 max_instances,
                 n_scenes_per_question,
                 current_grouped_scene_index):
-    """Instantiates questions based on a template, then 
-       post processes them into the grouped scene format.
-       Returns a dictionary of the form:
+    """
+    Generates grouped scene objects based on a question template.
+    Returns a dictionary of the form:
        {
            grouped_scene_index : {group_scene_object}
        }
-       where grouped_scene_index is a global index.
+    where grouped_scene_index is a global index.
     """
     instantiated_questions = instantiate_template_with_filter_options(all_scenes,
                                                 template,
@@ -261,11 +278,11 @@ def generate_grouped_scenes_for_question_template(
                                                 max_time,
                                                 max_instances,
                                                 n_scenes_per_question)
-    updated_grouped_scene_index, grouped_scenes = postprocess_instantiated_questions_into_grouped_scenes(instantiated_questions,curcurrent_grouped_scene_index)
+    updated_grouped_scene_index, grouped_scenes = postprocess_instantiated_questions_into_grouped_scenes(instantiated_questions,current_grouped_scene_index)
     
     return updated_grouped_scene_index, grouped_scenes
     
-def generate_grouped_scenes_for_all_question_templates(args, all_grouping_templates, all_scenes):
+def generate_grouped_scenes_for_all_question_templates(args, all_grouping_templates, all_scenes, metadata):
         """
         Generates all of the grouped scenes, along with their shared filter options and the instantiated programs to filter them on, for a set of grouping templates.
         
@@ -278,7 +295,6 @@ def generate_grouped_scenes_for_all_question_templates(args, all_grouping_templa
             }
         }
         """
-        
         all_grouped_scenes = {
             grouping_template_type : dict()
             for grouping_template_type in GROUPING_TEMPLATE_TYPES
@@ -287,7 +303,7 @@ def generate_grouped_scenes_for_all_question_templates(args, all_grouping_templa
         current_grouped_scene_index = 0 # Global index for the grouped scenes.
         for grouping_template_type in all_grouping_templates:
             grouping_templates = all_grouping_templates[grouping_template_type]
-            print(f"Now generating grouped scenes from the {len(grouping_templates)} templates of type: {grouping_template_type}"
+            print(f"Now generating grouped scenes from the {len(grouping_templates)} templates of type: {grouping_template_type}")
             
             # Since there are fewer ways to generate 'multiple object' templates, we scale them up to balance the dataset/
             if grouping_template_type == MULTIPLE:
@@ -306,30 +322,31 @@ def generate_grouped_scenes_for_all_question_templates(args, all_grouping_templa
                                 n_scenes_per_question=args.n_scenes_per_question, 
                                 current_grouped_scene_index=current_grouped_scene_index)
                 all_grouped_scenes[grouping_template_type].update(grouped_scenes)
-                print(f"Found {len(grouped_scene)} scenes.")
+                print(f"Found {len(grouped_scenes)} scenes.")
         return all_grouped_scenes
 
 def write_output_grouped_scenes_file(args, scene_info, input_scene_file, all_grouped_scenes):
     split = scene_info['split']
+    input_scene_basename = os.path.basename(input_scene_file)
     output_filename = os.path.join(args.output_scenes_directory,
-    f"{args.output_scenes_prefix}_{input_scene_file}")
+    f"{args.output_scenes_prefix}_{input_scene_basename}")
     
     with open(output_filename, 'w') as f:
       print(f'Writing out grouped scenes to {output_filename}')
       json.dump({
           'info': scene_info,
-          'grouped_scenes': grouped_scenes,
+          'grouped_scenes': all_grouped_scenes,
         }, f)        
     
 def main(args):
     set_random_seed(args)
-    input_scene_file, all_scenes, scene_info = get_input_scenes(args)
+    input_scene_file, all_scenes, scene_info = get_initial_input_scenes(args)
     metadata = get_question_metadata(args)
     all_grouping_templates = get_grouping_templates(args)
      
-    all_grouped_scenes = generate_grouped_scenes_for_all_question_templates(args, all_grouping_templates, all_scenes)
+    all_grouped_scenes = generate_grouped_scenes_for_all_question_templates(args, all_grouping_templates, all_scenes, metadata)
     
-    write_output_questions_files(args, scene_info, input_scene_file, all_grouped_scenes)        
+    write_output_grouped_scenes_file(args, scene_info, input_scene_file, all_grouped_scenes)        
     
 if __name__ == '__main__':
   args = parser.parse_args()

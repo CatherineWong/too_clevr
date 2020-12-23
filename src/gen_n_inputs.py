@@ -249,6 +249,11 @@ def generate_grouped_scenes_for_question_template(
                 current_grouped_scene_index):
     """Instantiates questions based on a template, then 
        post processes them into the grouped scene format.
+       Returns a dictionary of the form:
+       {
+           grouped_scene_index : {group_scene_object}
+       }
+       where grouped_scene_index is a global index.
     """
     instantiated_questions = instantiate_template_with_filter_options(all_scenes,
                                                 template,
@@ -261,7 +266,19 @@ def generate_grouped_scenes_for_question_template(
     return updated_grouped_scene_index, grouped_scenes
     
 def generate_grouped_scenes_for_all_question_templates(args, all_grouping_templates, all_scenes):
-        # Initialize the final output type.
+        """
+        Generates all of the grouped scenes, along with their shared filter options and the instantiated programs to filter them on, for a set of grouping templates.
+        
+        Takes a dict of grouping templates of the form {
+            grouping_template_type (e.g. 'unique) : [grouping_templates]
+        }
+        Returns grouped scenes of the form: {
+            grouping_template_type (e.g. 'unique) : {
+                grouped_scene_index : {group_scene_object}
+            }
+        }
+        """
+        
         all_grouped_scenes = {
             grouping_template_type : dict()
             for grouping_template_type in GROUPING_TEMPLATE_TYPES
@@ -288,7 +305,7 @@ def generate_grouped_scenes_for_all_question_templates(args, all_grouping_templa
                                 max_time=args.max_time_to_instantiate,
                                 n_scenes_per_question=args.n_scenes_per_question, 
                                 current_grouped_scene_index=current_grouped_scene_index)
-                grouped_scenes[count_type].update(grouped_scene)
+                all_grouped_scenes[grouping_template_type].update(grouped_scenes)
                 print(f"Found {len(grouped_scene)} scenes.")
         return all_grouped_scenes
 

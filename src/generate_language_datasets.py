@@ -1,5 +1,22 @@
 """
-Utilities for generating the 'language' dataset.
+gen_language_datasets.py | Author: Catherine Wong
+
+This generates the separated test and train splits containing just the natural language question query for each CLEVR task, along with a vocabulary file, in
+the standardized dataset format used in the other DreamCoder + Language domains.
+
+It expects a directory containing train/val questions for a question template class
+of the form '{prefix}_train_{question_class}.json'.
+It will then generate a directory and files of the form:
+    {question_class}/
+        test/ -> language.json and vocab.json
+        train/ ..
+for each of the question classes.
+Each language file is a dictionary in the form:
+    {
+    "0_full original question text" : [tokenized question text],
+    }
+
+Example usage:
 """
 
 import argparse, json, os, itertools, random, shutil
@@ -10,66 +27,173 @@ import question_utils as qutils
 from collections import defaultdict, Counter
 import pathlib
 
+GENERATE_ALL_FLAG = 'all'
+DEFAULT_QUESTIONS_PREFIX = 'CLEVR'
+LANGUAGE_FILENAME = 'language.json'
+VOCAB_FILENAME = 'vocab.json'
+DATASET_SPLIT_NAMES = ['train', 'val']
 
 # File handling.
 parser = argparse.ArgumentParser()
-parser.add_argument('--questions_dir', default='data/clevr_dreams/questions',
-    help="Directory containing JSON questions files to generate train and test language for.")
-parser.add_argument('--output_language_dir', default='data/clevr_dreams/language',
+
+parser.add_argument('--questions_dir', required=True,
+    help="Directory containing JSON questions files to extract train and test language for.")
+parser.add_argument('--question_classes_to_generate', 
+                    nargs='*',
+                    help='Which question classes to generate for, or "all" for all in the directory.')
+parser.add_argument('--question_files_prefix', 
+                    default="CLEVR",
+                    help='The common prefix for all the question files.')
+                    
+parser.add_argument('--output_language_dir', required=True,
     help="Top level directory under which we will write the language files.")
 
-def process_question_text(text):
-    # remove punctuation, capitalization, and split plurals
-    text = text.lower()
-    punctuation = ["?", ".", ","]
-    text = "".join([c for c in text if c not in punctuation])
+def get_metadata_from_question_file(filename, args):
+    """
+    Returns (filename, split, class) from '{prefix}_{split}_{class}.json'.
+    Prefix should not have underscores.
+    Class can have underscores.
+    """
+    split_filename = filename.split("_")
+    assert split_filename[0] == args.question_files_prefix
+    assert split_filename[1] in DATASET_SPLIT_NAMES
+    split = split_filename[1] 
+    dataset_name = "_".join(split_filename[2:]).split('.json')[0] # Remove the JSON
+    return (filename, split, dataset_name)
+    
+def get_question_files_and_metadata(args):
+    """
+    Gets any valid question files from the directory, along with their metadata (the question class name, and the split.)
+    Files should be named in the form '{prefix}_{split}_{class}.json'
+    Returns valid question files in the form:
+        {
+            filename : (split, dataset_name)
+        }
+    """
+    generate_all = (args.question_classes_to_generate == [GENERATE_ALL_FLAG])
+    
+    candidate_question_files = [file for file in os.listdir(args.questions_dir) if file.endswith('.json') and file.startswith(args.question_files_prefix)]
+    valid_question_files = dict()
+    for candidate_question_file in candidate_question_files:
+         (filename, split, dataset_name) = get_metadata_from_question_file(candidate_question_file, args)
+         if generate_all or (dataset_name in args.question_classes_to_generate):
+             valid_question_files[filename] = (split, dataset_name)
+    return valid_question_files
+
+def create_output_dirs(args, question_files_and_metadata):
+    """
+    Creates the {question_class}/ -> test/ train/ directories for the given question files, and stores these directories with the question_files for writing output.
+    Returns a dict of the form: { filename: output_dir_path }
+    """
+    question_files_and_output_dirs = dict()
+    
+    for question_file in question_files_and_metadata:
+        split, dataset_name = question_files_and_metadata[question_file]
+        
+        output_directory = os.path.join(args.output_language_dir, dataset_name, split)
+        pathlib.Path(output_directory).mkdir(parents=True, exist_ok=True)
+        question_files_and_output_dirs[question_file] = output_directory
+    return question_files_and_output_dirs
+
+def iteratively_write_out_processed_language_dataset(args, question_files_and_output_dirs):
+    """
+    Iterates over the input question files, writing out a language.json and vocab.json to their corresponding output directory.
+    """
+    for question_file in question_files_and_output_dirs:
+        full_question_filepath = os.path.join(args.questions_dir, question_file)
+        output_dir = question_files_and_output_dirs[question_file]
+        
+        print(f"Writing language dataset for {full_question_filepath}.")
+        with open(full_question_filepath, 'r') as f:
+            input_questions = json.load(f)["questions"]
+            processed_language, vocab = get_processed_language_and_vocab(input_questions)  
+            
+            # Write out the processed langage object.
+            output_filename = os.path.join(output_dir, LANGUAGE_FILENAME)
+            print(f"Writing question text for [{len(processed_language)}] questions to {output_filename}")
+            with open(output_filename, 'w') as f:
+                json.dump(processed_language, f)
+            
+            # Write out the vocabulary object.
+            output_filename= os.path.join(output_dir, VOCAB_FILENAME)
+            print(f"Writing vocab of [{len(vocab)}] words to {output_filename}")
+            with open(output_filename, 'w') as f:
+                json.dump(vocab, f)     
+            
+def get_processed_language_and_vocab(input_questions):
+    """
+    Generates the processed_language and vocab objects from the original set of CLEVR questions.
+    Returns:
+        processed_language:  { task_name :  [processed_text]}
+        vocab = [vocabulary_tokens]
+    """
+    processed_language = {}
+    vocab = set()
+    for question_object in input_questions:
+        question_text = question_object['question'] if type(question_object['question']) is str else question_object['question'][0]
+        task_name = f"{question_object['question_index']}_{question_text}"
+        processed = process_question_text(question_text)
+        vocab.update(processed.split())
+        processed_language[task_name] = [processed]
+    vocab = list(vocab)
+    return processed_language, vocab  
+        
+def process_question_text(question_text):
+    """
+    Processing to tokenize the question text into a standarized format.
+    We remove punctuation, capitalization, and split plural objects.
+    """
+    question_text = question_text.lower()
+    punctuation = ["?", ".", ",", ";"]
+    question_text = "".join([c for c in question_text if c not in punctuation])
     plurals = ['things', 'cylinders', 'spheres', 'cubes']
     for p in plurals:
-        text = text.replace(p, f'{p[:-1]} s')
-    return text
+        question_text = question_text.replace(p, f'{p[:-1]} s')
+    return question_text
 
 def main(args):
-    for questions_file in os.listdir(args.questions_dir):
-        if not questions_file.endswith('.json'): continue
-        print(f"Now generating language for: {questions_file}.")
-        prefix = 'CLEVR_train_' if 'CLEVR_train_' in questions_file else 'CLEVR_val_'
-        dataset_name = questions_file.split(prefix)[-1].split('.json')[0]
-        split = 'train' if 'train' in questions_file else 'test'
-        
-        # Make the language directory if it does not exist
-        language_dir = os.path.join(args.output_language_dir, dataset_name, split)
-        pathlib.Path(language_dir).mkdir(parents=True, exist_ok=True)
-        
-        fn = os.path.join(args.questions_dir, questions_file)
-        with open(fn, 'r') as f:
-            qs = json.load(f)["questions"]
-        
-        questions = {}
-        vocab = set()
-        for q in qs:
-            question_text = q['question'] if type(q['question']) is str else q['question'][0]
-            task_name = f"{q['question_index']}_{question_text}"
-            processed = process_question_text(question_text)
-            vocab.update(processed.split())
-            questions[task_name] = [processed]
+    question_files_and_metadata = get_question_files_and_metadata(args)
+    question_files_and_output_dirs = create_output_dirs(args, question_files_and_metadata)
+    iteratively_write_out_processed_language_dataset(args, question_files_and_output_dirs)
     
-        # Write language
-        out_fn = os.path.join(language_dir, 'language.json')
-        print(f"Writing text for [{len(questions)}] questions.")
-        with open(out_fn, 'w') as f:
-            json.dump(questions, f)
-        
-        # Write vocab
-        vocab = list(vocab)
-        print(f"Writing vocab of [{len(vocab)}] words.")
-        out_fn = os.path.join(language_dir, 'vocab.json')
-        with open(out_fn, 'w') as f:
-            json.dump(vocab, f)
+    # for questions_file in os.listdir(args.questions_dir):
+    #     if not questions_file.endswith('.json'): continue
+    #     print(f"Now generating language for: {questions_file}.")
+    #     prefix = 'CLEVR_train_' if 'CLEVR_train_' in questions_file else 'CLEVR_val_'
+    #     dataset_name = questions_file.split(prefix)[-1].split('.json')[0]
+    #     split = 'train' if 'train' in questions_file else 'test'
+    # 
+    #     # Make the language directory if it does not exist
+    #     language_dir = os.path.join(args.output_language_dir, dataset_name, split)
+    #     pathlib.Path(language_dir).mkdir(parents=True, exist_ok=True)
+    # 
+    #     fn = os.path.join(args.questions_dir, questions_file)
+    #     with open(fn, 'r') as f:
+    #         qs = json.load(f)["questions"]
+    # 
+    #     questions = {}
+    #     vocab = set()
+    #     for q in qs:
+    #         question_text = q['question'] if type(q['question']) is str else q['question'][0]
+    #         task_name = f"{q['question_index']}_{question_text}"
+    #         processed = process_question_text(question_text)
+    #         vocab.update(processed.split())
+    #         questions[task_name] = [processed]
+    # 
+    #     # Write language
+    #     out_fn = os.path.join(language_dir, 'language.json')
+    #     print(f"Writing text for [{len(questions)}] questions.")
+    #     with open(out_fn, 'w') as f:
+    #         json.dump(questions, f)
+    # 
+    #     # Write vocab
+    #     vocab = list(vocab)
+    #     print(f"Writing vocab of [{len(vocab)}] words.")
+    #     out_fn = os.path.join(language_dir, 'vocab.json')
+    #     with open(out_fn, 'w') as f:
+    #         json.dump(vocab, f)
             
             
-        
-        
-    
 if __name__ == '__main__':
   args = parser.parse_args()
   main(args)  

@@ -5,17 +5,30 @@ This takes a set of input scenes, then generates a set of grouped scenes (keyed 
 
 These grouped scenes are the input for the generate_questions_extended.py pipeline for generating the new questions (e.g. scene transforming) in the extended version of the dataset.
 
-TODO Produces a dict with:
-    unique: exactly one object with the given property.
-    multiple: any number of objects with the given property.
-    
-    Under each type: a list of 
+This writes out a file containing grouped scenes in the form:
+{
+    "info": {scene information object, including the train/test split}
+    "grouped_scenes" : {
+        "unique": [grouped scene objects with a unique filter query, of the form 
         {
-            attributes: [list of attributes]
-            scenes: [list of scenes with objects of that attribute]
+            "filter_options": (sorted tuple of attribute types),
+            "input_image_filenames" : [string filenames],
+            "input_image_indexes" : [int indexes],
+            "filter_programs" : [
+                [array of program nodes], 
+            ]
         }
+        ]
+        "multiple": [grouped scene objects.]
+    }
+}
 
-TODO: example usage: 
+Example usage:
+    python3 gen_n_inputs.py --default_train_scenes
+        --instances_per_template 50
+        --n_scenes_per_question 5
+        --max_time_to_instantiate 5
+        --output_scenes_directory ../data/clevr_dreams/grouped_scenes
 """
 import argparse, json, os, itertools, random, shutil
 import time

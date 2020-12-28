@@ -16,7 +16,10 @@ Each language file is a dictionary in the form:
     "0_full original question text" : [tokenized question text],
     }
 
-Example usage:
+Example usage: python3 generate_language_datasets.py --questions_dir clevr_dreams/questions
+    --question_classes_to_generate all
+    --question_files_prefix CLEVR
+    --output_language_dir clevr_dreams/language
 """
 
 import argparse, json, os, itertools, random, shutil

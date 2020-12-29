@@ -31,6 +31,7 @@ DEFAULT_EXTENDED_TEMPLATES_DIR = "../metadata/clevr_extended_metadata/question_t
 GENERATE_ALL_FLAG = 'all'
 
 # Special extended question primitives
+PRIMITIVE_FILTER = "filter"
 PRIMITIVE_TRANSFORM = "transform"
 PRIMITIVE_REMOVE = "remove"
 
@@ -58,6 +59,7 @@ parser.add_argument('--question_templates',
 # Arguments that determine parameters of the questions we generate.       
 parser.add_argument('--instances_per_template', default=15, type=int,
     help="The number of times each template should be instantiated.")
+parser.add_argument('--max_generation_tries_per_instantiation', default=500, type=int, help="The number of randomized attempts we will take to instantiate a given question template.") 
 
 # Arguments to determine where we write and store the output questions.
 parser.add_argument('--output_questions_directory',
@@ -155,72 +157,302 @@ def get_question_templates(args, metadata):
                 print(f'Read {len(templates[template_class_name])} question templates from {full_template_filepath}.')
     return templates
 
-def build_filter_option(grouped_input_scenes, f, constraints, group, params, original_idx, curr_node_idx, new_node_idxs):
-    # Select a filter option from the grouped input scenes.
-    if "filter" not in constraints:
+def generate_extended_questions_for_all_template_files(args, all_templates,
+    dataset_split, metadata, all_scenes, all_grouped_scenes):
+    """
+    Generates a set of questions for a set of template files, which should be from the 'extended template' set, all of which assume a common 'filterable' object format.
+    For each template file, attempts to generate a set of n_instances_per_template questions.
+    Takes a dict containing the different template questions in the form:
+        {
+            template_filename: {(template_filename, original_question_idx): template}
+        }
+            
+    Returns {[template_filename] : [question_objects]}
+    """
+    all_generated_questions = {}
+    for template_filename in all_templates:
+        templates_for_file = all_templates[template_filename]
+        questions_for_file = generate_questions_for_template_file(args, templates_for_file,
+            dataset_split, metadata, all_scenes)
+        
+        all_generated_questions[template_filename] = questions_for_file
+    return all_generated_questions
+
+def generate_questions_for_template_file(args, templates_for_file, dataset_split, metadata, all_scenes, grouped_scenes):
+    """
+    Attempts to generate a set of questions for a single template file.
+    Takes a single dict containing the question templates for a particular file in the form:
+        {(template_filename, original_question_idx): template}
+        
+    For each question in the template file, attepts repeatedly to instantiate questions, up to a given number of tries.
+    Returns a list of questions indexed for that template.
+    """
+    generated_questions = []
+    templates_items = list(templates_for_file.items())
+    for i, ((template_filename, template_index), template) in enumerate(templates_items):
+        print(f'Trying question template {template_filename} {template_index} : {i}/{len(templates_items)} in this file.') 
+        questions_for_template = []
+        
+        instantiated_questions = instantiate_extended_template_multiple_inputs(all_scenes=all_scenes,
+                                                      grouped_scenes=grouped_scenes,
+                                                      template=template,
+                                                      metadata=metadata,
+                                                      max_instances=args.instances_peinstances_per_template,
+                                                      max_tries=args.max_generation_tries_per_instantiation)
+        # TODO: post process.
+    
+    ###
+    questions = []
+    templates_items = list(templates.items())
+    for i, ((fn, idx), template) in enumerate(templates_items):
+        print(f'trying template {fn} {idx} : {i}/{len(templates_items)}') 
+        instantiated_qs = instantiate_templates_extended(all_scenes,
+                                       grouped_scenes,
+                                       template,
+                                       metadata,
+                                       args.instances_per_template)
+        for q in instantiated_qs:
+            q['split'] = scene_info['split']
+            q['template_filename'] = fn
+            q['question_index'] = len(questions)
+            q['template_index'] = idx
+            questions.append(q)
+        print(f"Generated {len(instantiated_qs)} questions for that template.")
+
+def instantiate_extended_template_multiple_inputs(all_scenes,
+                                                  grouped_scenes,
+                                                  template,
+                                                  metadata,
+                                                  max_instances=None, # Maximum instances of this template.
+                                                  max_tries=1000,
+                                                  print_every=100):
+    """
+    Attempts to generate text questions for the given question template.
+    Attempts up to max_tries times to generate up to max_instances questions for the template.
+    
+    Returns {question_text : (scenes_object, programs, answers)}.
+    """
+    generated_text_questions = defaultdict(list)
+    for curr_try in range(max_tries):
+        if curr_try % print_every == 0:
+            print(f"For this template, currently on try: {curr_try} / {max_tries}")
+        template_copy = copy.deepcopy(template) # We modify the template while instantiating it
+        text, programs, scenes, answers, did_succeed = instantiate_extended_template_from_grouped_scenes(all_scenes,
+                                                        grouped_scenes,
+                                                        template_copy, 
+                                                        metadata)
+        if not did_succeed: continue
+        if text in generated_text_questions: continue # Don't repeat questions
+        generated_text_questions[text] = (scenes, programs, answers)
+        
+        if len(generated_text_questions) > max_instances:
+            break
+    return generated_text_questions
+
+def instantiate_extended_template_from_grouped_scenes(
+    all_input_scenes,
+    grouped_input_scenes,
+    template,
+    metadata):
+    """
+    Instantiates a template from the extended question format, which expects all questions to involve a single filter option (e.g. queries that involve first filtering on one or more attributes, and then running additional computations on that set of filtered objects.)
+
+    To speed computation, this uses sets of grouped_input_scenes that have already instantiated their filter nodes. It choose one or more options from that set of shared attributes, then layers additional transformations or computations after it.
+    Returns: instantiated_text (String text of instantiated program), program (an array of program nodes), input_scenes, answers, did_succeed (Boolean)
+    """
+    
+    # First, we construct the instantiated program itself, using a filter option selected from one of the grouped scenes. This involves destructively modifying the program nodes themselves. 
+    # params are the placeholder parameter variables (e.g. <S>, Size) that must be grounded out into attributes
+    instantiated_program, params, input_scenes = [], template["params"], None
+    new_node_idxs = {i : i for i in range(len(template['nodes']))} # Mutable dictionary that maps the original program indices to their most recently updated pointer, since we 'expand' filter and transform nodes into more than one node.
+    for original_idx, node in enumerate(template['nodes']):
+        if node['type'] == 'scene': 
+            instantiated_program.append(node)
+        elif node['type'] == PRIMITIVE_FILTER:
+            filter_program, input_scenes = build_filter_option(grouped_input_scenes=grouped_input_scenes, filter_node=node, constraints=template["constraints"], group=template['group'], params=params, original_idx=original_idx, curr_node_idx=len(instantiated_program), new_node_idxs=new_node_idxs)
+            instantiated_program += filter_program
+        elif node['type'] == 'transform':
+            instantiated_program += build_transform_option(node, template["constraints"], metadata, params, original_idx=original_idx, curr_node_idx=len(instantiated_program), new_node_idxs=new_node_idxs)
+        else:
+            instantiated_program += build_instantiated_program_node(f, metadata, curr_node_idx=len(instantiated_program), original_idx=original_idx, new_node_idxs=new_node_idxs, params=params)
+            
+    # Build the program text
+    instantiated_text = instantiate_question_text(template, params, template["constraints"])
+    if len(instantiated_text) < 1:
+        return [], None, None, None
+    
+    # Run the program on the scenes to generate the answers
+    answers = []
+    for input_image_index in input_scenes['input_image_indexes']:
+        input_scene = all_input_scenes[int(input_image_index)]
+        ans = extended_qeng.answer_question(instantiated_program, 
+                                            metadata,
+                                            input_scene, all_outputs=False, cache_outputs=False)
+    
+        answers.append(ans)
+    # Don't allow the answers to all be identical
+    if type(answers[0]) is not dict and len(set(answers)) < 2:
+        return [], None, None, None
+    return instantiated_text, instantiated_program, input_scenes, answers
+
+def build_filter_option(grouped_input_scenes, filter_node, constraints, group, params, original_idx, curr_node_idx, new_node_idxs):
+    """
+    Constructs the 'filter' program nodes for a full program.
+    Expects a set of grouped_input_scenes with pre-instantiated filter programs, which it uses to generate the resulting program nodes.
+        grouped_scenes are of the form: {
+            group (e.g. UNIQUE/MULTIPLE) : {
+                group_index : {
+                    filter_options : [["Color", "red"], ["Material", "rubber"]],
+                    filter_programs: [[program nodes], [program nodes]]
+                }
+            }
+        }
+        
+    Returns:
+        filter_program: [array of filter nodes that point to each other]
+        grouped_scenes_object: the object for the corresponding grouped scenes we filtered on.
+    Modifies: new_node_idx so that the filter node now points to the end of the filter chain.
+    template['params'] to contain the instantiated parameter
+    """
+    assert (filter_node["type"] == PRIMITIVE_FILTER)
+    # Select a set of grouped scenes with corresponding filterable attributes
+    if "filter" not in constraints: # Unconstrained: any set of attributes will do.
         filter_option_idx = random.choice(list(grouped_input_scenes[group].keys()))
-        input_scenes = grouped_input_scenes[group][str(filter_option_idx)]
-        filter_options = input_scenes["filter_options"]
-    else:
+        grouped_scenes_object = grouped_input_scenes[group][filter_option_idx]
+        filter_options = grouped_scenes_object["filter_options"]
+    else: # Constrained: we must choose scenes with specific filter type requirements
         param_to_type = {p['name'] : p['type'] for p in params}
         # Directly search for a filter that meets the required constraints
         if constraints["filter"] == "choose_exactly":
-            req_types = set([param_to_type[p] for p in f['side_inputs']])
-            key_options = []
-            for k in grouped_input_scenes[group]:
-                input_scenes = grouped_input_scenes[group][k]
+            req_types = set([param_to_type[p] for p in filter_node['side_inputs']])
+            candidate_grouped_scene_indices = []
+            for candidate_index in grouped_input_scenes[group]:
+                input_scenes = grouped_input_scenes[group][candidate_index]
                 filter_options = input_scenes["filter_options"]
-                filter_types = set([opt[0] for opt in filter_options])
+                filter_types = set([opt[0] for opt in filter_options]) # Options are (FilterType, FilterAttribute); this gets the type only
                 if req_types == filter_types:
-                    key_options.append(k)
+                    candidate_grouped_scene_indices.append(candidate_index )
             filter_option_idx = random.choice(key_options)
             input_scenes = grouped_input_scenes[group][str(filter_option_idx)]
             filter_options = input_scenes["filter_options"]
+        else:
+            print(f"Error: unknown filter constraint {constraints['filter']}.")
+            assert False
     
+    # Construct the filter program nodes themselves, using the updated pointer values.
     filter_program = []
     for i, (attr_type, attr_value) in enumerate(filter_options):
         # Redirect these nodes to filter from each other.
-        input_idx = new_node_idxs[f['inputs'][0]] if len(filter_program) < 1 else curr_node_idx + len(filter_program) - 1
+        assert len(filter_node['inputs'][0]) == 1 # Should take only one input.
+        input_idx = new_node_idxs[filter_node['inputs'][0]] if len(filter_program) == 0 else curr_node_idx + len(filter_program) - 1 # Redirect filter nodes to point to the previous node in the set 
         filter_program.append({
             "type": f"filter_{attr_type.lower()}",
-            "side_inputs": [attr_value],
+            "side_inputs": [attr_value], # What to filter on
             "inputs": [input_idx]
         })
-        for p in params: 
-            if p['type'] == attr_type and p['name'] in f['side_inputs']:
+        for p in params: # Replace the grounding variables with their real values
+            if p['type'] == attr_type and p['name'] in filter_node['side_inputs']:
                 p['value'] = attr_value
-    # Redirect anything that filtered from this node to filter from the final filter node.
+    # Redirect anything that filtered from the unexpanded filter node to filter from the final filter node in the chain of filters.
+    assert (new_node_idxs[original_idx]) == original_idx # Should not have been previously modified
     new_node_idxs[original_idx] = curr_node_idx + len(filter_program) - 1
-    return filter_program, input_scenes
+    return filter_program, grouped_scenes_object
 
-def build_transform_option(f, constraints, metadata, params, original_idx, curr_node_idx, new_node_idxs):
+def build_transform_option(transform_node, constraints, metadata, params, original_idx, curr_node_idx, new_node_idxs):
+    """
+    Constructs the 'transform' program nodes for a full program.
+    
+    Expects a 'transform' node of the form: {
+        inputs: [scene_node_idx, subset_of_scene_node_idx], 
+        side_inputs: [<param_name>, <param_name>],
+        constraints : []
+    }
+        
+    Returns:
+        filter_program: [array of filter nodes that point to each other]
+        grouped_scenes_object: the object for the corresponding grouped scenes we filtered on.
+    Modifies: new_node_idx so that the filter node now points to the end of the filter chain.
+    template['params'] to contain the instantiated parameter
+    """
+    assert (transform_node['type'] == PRIMITIVE_TRANSFORM)
     # Expand the transform into several params that have not yet been used.
     param_to_type = {p['name'] : p['type'] for p in params}
+    
+    # Choose a subset of the parameters to instantiate.
+    candidate_params= [param for param in params if param['name'] in transform_node['side_inputs']]
+    if ("transform" in constraints and constraints["transform"] == "choose_all"):
+        params_to_instantiate = candidate_params
+    else:
+        # Choose a non-empty random subset.
+        num_params_to_instantiate = random.randint(1,len(candidate_params))
+        params_to_instantiate = random.sample(candidate_params, num_params_to_instantiate)
+    
+    # Iteratively choose parameter values and construct transformation nodes.
     transform_program = []
-    while len(transform_program) < 1:
-        for param in params: 
-            if param['name'] in f['side_inputs']:
-                if uniform_bernoulli_flip() or ("transform" in constraints and constraints["transform"] == "choose_all"):
-                    used_param_vals = set([p['value'] for p in params if 'value' in p])
-                    param_type = param_to_type[param['name']]
-                    param_choices = set(metadata['types'][param_type]) - used_param_vals
-                    param_choice = random.choice(list(param_choices))
-                    param['value'] = param_choice
-                    
-                    # Redirect these transform nodes to take each other as the input scene
-                    input_scene = new_node_idxs[f['inputs'][0]] if len(transform_program) < 1 else curr_node_idx + len(transform_program) - 1
-                    selector_set = new_node_idxs[f['inputs'][1]]
-                    inputs = [input_scene, selector_set]
-                    
-                    transform_program.append({
-                        "type": f"transform_{param_type.lower()}",
-                        "side_inputs": [param_choice],
-                        "inputs": inputs
-                    })
+    for param in params_to_instantiate:
+        used_param_vals = set([p['value'] for p in params_to_instantiate if 'value' in p])
+        param_type = param_to_type[param['name']]
+        param_choices = set(metadata['types'][param_type]) - used_param_vals
+        param_choice = random.choice(list(param_choices))
+        param['value'] = param_choice
+    
+        # Redirect these transform nodes to take each other as the input scene
+        input_scene = new_node_idxs[transform_node['inputs'][0]] if len(transform_program) < 1 else curr_node_idx + len(transform_program) - 1
+        selector_set = new_node_idxs[transform_node['inputs'][1]]
+        inputs = [input_scene, selector_set] # All transform arguments are of the form (input_scene, selector subset)
+        
+        transform_program.append({
+            "type": f"transform_{param_type.lower()}",
+            "side_inputs": [param_choice],
+            "inputs": inputs
+        })
     
     # Redirect anything that pointed to this node to take from the final transform node
     new_node_idxs[original_idx] = len(transform_program) + curr_node_idx - 1
     return transform_program
+
+
+def instantiate_templates_extended(all_input_scenes,
+                                   grouped_input_scenes,
+                                   template,
+                                   metadata,
+                                   max_instances,
+                                   max_tries=1000):
+    """DEPRECATED, now instantiate_extended_template_multiple_inputs"""
+    final_qs = []
+    text_questions = set()
+    tic = time.time()
+    
+    for _ in range(max_tries):
+        t, program, input_scenes, ans = instantiate_template(all_input_scenes,
+                                           grouped_input_scenes,
+                                           copy.deepcopy(template),
+                                           metadata) 
+        if len(t) < 1: continue
+        if t[0] not in text_questions:
+            text_questions.update(t)
+            # Fix the program as per the original code
+            for f in program:
+              if 'side_inputs' in f:
+                f['value_inputs'] = f['side_inputs']
+                del f['side_inputs']
+              else:
+                f['value_inputs'] = []
+            
+            final_qs.append({
+                'question': t,
+                'answers' : ans,
+                'program' : program,
+                'image_filenames' : input_scenes['input_image_filenames'],
+                'image_indices' : input_scenes['input_image_indexes']
+            })
+        toc = time.time()
+        # if (toc - tic) > max_time:
+        #     print("Out of time!")
+        #     break     
+        if len(final_qs) >= max_instances:
+            break
+    return final_qs
 
 def instantiate_question_text(template, params, constraints):
     instantiated_texts = []
@@ -271,92 +503,6 @@ def build_instantiated_program_node(f, metadata, curr_node_idx, original_idx, ne
     new_node_idxs[original_idx] = len(program) + curr_node_idx - 1
     return program
     
-
-def instantiate_template(
-    all_input_scenes,
-    grouped_input_scenes,
-    template,
-    metadata):
-    """Instantiate template scenes with a single filter option.
-    Choose from the preselected 'filter' and layer additional transformations
-    on top.
-    """
-    program, params, input_scenes = [], template["params"], None
-    
-    # Build up and expand the instantiated program, changing the program node pointers as needed.
-    new_node_idxs = {i : i for i in range(len(template['nodes']))}
-    for original_idx, f in enumerate(template['nodes']):
-        if f['type'] == 'scene':
-            program.append(f)
-        elif f['type'] == 'filter':
-            filter_program, input_scenes = build_filter_option(grouped_input_scenes, f, template["constraints"], template['group'], params, original_idx=original_idx, curr_node_idx=len(program), new_node_idxs=new_node_idxs)
-            program += filter_program
-        elif f['type'] == 'transform':
-            program += build_transform_option(f, template["constraints"], metadata, params, original_idx=original_idx, curr_node_idx=len(program), new_node_idxs=new_node_idxs)
-        else:
-            program += build_instantiated_program_node(f, metadata, curr_node_idx=len(program), original_idx=original_idx, new_node_idxs=new_node_idxs, params=params)
-            
-    # Build the program text
-    instantiated_text = instantiate_question_text(template, params, template["constraints"])
-    if len(instantiated_text) < 1:
-        return [], None, None, None
-    
-    # Run the program on the scenes to generate the answers
-    answers = []
-    for input_image_index in input_scenes['input_image_indexes']:
-        input_scene = all_input_scenes[int(input_image_index)]
-        ans = extended_qeng.answer_question(program, 
-                                            metadata,
-                                            input_scene, all_outputs=False, cache_outputs=False)
-    
-        answers.append(ans)
-    # Don't allow the answers to all be identical
-    if type(answers[0]) is not dict and len(set(answers)) < 2:
-        return [], None, None, None
-    return instantiated_text, program, input_scenes, answers
-        
-def instantiate_templates_extended(all_input_scenes,
-                                   grouped_input_scenes,
-                                   template,
-                                   metadata,
-                                   max_instances,
-                                   max_time=100,
-                                   max_tries=1000):
-    final_qs = []
-    text_questions = set()
-    tic = time.time()
-    for _ in range(max_tries):
-        t, program, input_scenes, ans = instantiate_template(all_input_scenes,
-                                           grouped_input_scenes,
-                                           copy.deepcopy(template),
-                                           metadata) 
-        if len(t) < 1: continue
-        if t[0] not in text_questions:
-            text_questions.update(t)
-            # Fix the program as per the original code
-            for f in program:
-              if 'side_inputs' in f:
-                f['value_inputs'] = f['side_inputs']
-                del f['side_inputs']
-              else:
-                f['value_inputs'] = []
-            
-            final_qs.append({
-                'question': t,
-                'answers' : ans,
-                'program' : program,
-                'image_filenames' : input_scenes['input_image_filenames'],
-                'image_indices' : input_scenes['input_image_indexes']
-            })
-        toc = time.time()
-        # if (toc - tic) > max_time:
-        #     print("Out of time!")
-        #     break     
-        if len(final_qs) >= max_instances:
-            break
-    return final_qs
-
-
 def main(args):
     set_random_seed(args)
     scenes_file, all_scenes, scene_info, grouped_scenes_file, grouped_scenes = get_input_scenes_and_grouped_scenes(args)

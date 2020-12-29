@@ -145,7 +145,7 @@ def instantiate_templates_dfs_multiple_inputs(
                 template,
                 metadata,
                 answer_counts, # Holdover to allow answer distribution.
-                max_instances=None, # Maximum instances of this teplate.
+                max_instances=None, # Maximum instances of this template.
                 n_scenes_per_question=None,
                 max_time=100):
     """

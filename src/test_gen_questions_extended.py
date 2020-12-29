@@ -27,6 +27,9 @@ def get_default_transformation_question_template_choose_some():
 
 def get_default_transformation_question_template_choose_all():
     return {"text": ["If all of the <Z> <C> <M> <S>s became <Z2>, how many <Z> things would there be?"], "nodes": [{"inputs": [], "type": "scene"}, {"side_inputs": ["<Z>", "<C>", "<M>", "<S>"], "inputs": [0], "type": "filter"}, {"side_inputs": ["<Z2>"], "inputs": [0, 1], "type": "transform"}, {"side_inputs": ["<Z>"], "inputs": [2], "type": "filter_size"}, {"inputs": [3], "type": "count"}], "constraints": {"transform": "choose_all", "<Z>": "instantiated"}, "group": "multiple", "params": [{"type": "Size", "name": "<Z>"}, {"type": "Color", "name": "<C>"}, {"type": "Material", "name": "<M>"}, {"type": "Shape", "name": "<S>"}, {"type": "Relation", "name": "<R>"}, {"type": "Size", "name": "<Z2>"}, {"type": "Color", "name": "<C2>"}, {"type": "Material", "name": "<M2>"}, {"type": "Shape", "name": "<S2>"}]}
+
+def get_default_remove_question_template():
+    return {"text": ["If you removed the <C> things, how many <S>s would be left?"], "nodes": [{"inputs": [], "type": "scene"}, {"side_inputs": ["<C>"], "inputs": [0], "type": "filter"}, {"inputs": [0, 1], "type": "remove"}, {"side_inputs": ["<S>"], "inputs": [2], "type": "filter_shape"}, {"inputs": [3], "type": "count"}], "constraints": {"filter": "choose_exactly"}, "group": "multiple", "params": [{"type": "Size", "name": "<Z>"}, {"type": "Color", "name": "<C>"}, {"type": "Material", "name": "<M>"}, {"type": "Shape", "name": "<S>"}, {"type": "Relation", "name": "<R>"}]}
     
 def test_get_input_scenes_and_grouped_scenes_default_train():
     """Tests that we get the default set of training and grouped scenes when no other input scenes are provided."""
@@ -154,7 +157,6 @@ def test_build_filter_option():
 
 def test_build_transform_option_choose_some():
     """Test the transformations for a question where we also randomly sample a subset of possible attributes to transform."""
-    grouped_input_scenes = get_default_grouped_scenes()
     metadata = get_default_metadata()
     template = get_default_transformation_question_template_choose_some()
     
@@ -190,7 +192,65 @@ def test_build_transform_option_choose_some():
 
 def test_build_transform_option_choose_all():
     """Test the transformations for a question where we must transform a given number of parameters."""
-    pass
+    """Test the transformations for a question where we also randomly sample a subset of possible attributes to transform."""
+    metadata = get_default_metadata()
+    template = get_default_transformation_question_template_choose_all()
+    
+    # Extract the transform node
+    transform_node_object = [(node_index, node) for (node_index, node) in enumerate(template['nodes']) if node['type'] == to_test.PRIMITIVE_TRANSFORM]
+    original_idx, transform_node = transform_node_object[0]
+    new_node_idxs = {i : i for i in range(len(template['nodes']))}
+    current_node_index = 10 # Artificially extend to test that we can modify this accordingly.
+    
+    transform_program = to_test.build_transform_option(transform_node=transform_node, constraints=template["constraints"], metadata=metadata, params=template['params'], original_idx=original_idx, curr_node_idx=current_node_index, new_node_idxs=new_node_idxs)
+
+    assert len(transform_program) == 1
+    candidate_params = [param for param in template['params'] if param['name'] in transform_node['side_inputs']]
+    instantiated_params = [param for param in candidate_params if "value" in param]
+    assert len(transform_program) == len(instantiated_params)
+    
+    possible_transform_types = [f"transform_{param['type'].lower()}" for param in instantiated_params]
+    possible_transform_values = [param['value'] for param in instantiated_params]
+    
+    for index, transform_program_node in enumerate(transform_program):
+        assert len(transform_program_node['inputs']) == 2
+        if index == 0:
+            assert transform_program_node['inputs'][0] == 0 # Directly from the scene
+        else:
+            assert transform_program_node['inputs'][0] == current_node_index + index - 1
+        assert transform_program_node['type'] in possible_transform_types
+        assert len(transform_program_node['side_inputs']) == 1
+        assert transform_program_node['side_inputs'][0] in possible_transform_values
+        
+    # Make sure we changed the node indices
+    assert new_node_idxs[original_idx] == current_node_index + len(transform_program) - 1
+
+def test_build_other_instantiated_program_node_remove():
+    metadata = get_default_metadata()
+    template = get_default_remove_question_template()
+    
+    # Extract the filter shape node that determines what we will remove
+    remove_node_object = [(node_index, node) for (node_index, node) in enumerate(template['nodes']) if node['type'] == "filter_shape"]
+    original_idx, remove_node = remove_node_object[0]
+    num_params_to_instantiate = len(remove_node['side_inputs'])
+    new_node_idxs = {i : i for i in range(len(template['nodes']))}
+    current_node_index = 10 # Artificially extend to test that we can modify this accordingly.
+    
+    remove_program = to_test.build_other_instantiated_program_node(other_node=remove_node, metadata=metadata, params=template['params'], original_idx=original_idx, curr_node_idx=current_node_index, new_node_idxs=new_node_idxs)
+    
+    instantiated_params = [param for param in template['params'] if "value" in param]
+    instantiated_param_values = [param['value'] for param in instantiated_params]
+    assert len(instantiated_params) == num_params_to_instantiate
+    
+    assert len(remove_program) == 1
+    instantiated_node = remove_program[0]
+    assert instantiated_node['type'] == "filter_shape"
+    for param in instantiated_node['side_inputs']:
+        assert param in instantiated_param_values
+    
+    # Make sure we changed the node indices
+    assert new_node_idxs[original_idx] == current_node_index + len(remove_program) - 1
+
 
 def test_instantiate_extended_template_from_grouped_scenes_localization():
     """Test the instantiation of a template that requires localization: filtering down a set of initial objects to a set that satisfies one or more attributes."""
@@ -198,8 +258,7 @@ def test_instantiate_extended_template_from_grouped_scenes_localization():
 
 def test_instantiate_extended_template_from_grouped_scenes_remove():
     """Test the instantiation of a template that requires remove: filtering down a set of initial objects to a set that satisfies one or more attributes, then removing them."""
-    pass
-
+    
 def test_instantiate_extended_template_from_grouped_scenes_transform():
     """Test the instantiation of a template that requires transform: filtering down a set of initial objects to a set that satisfies one or more attributes, then removing them."""
     pass

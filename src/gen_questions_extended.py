@@ -260,6 +260,7 @@ def instantiate_extended_template_from_grouped_scenes(
     To speed computation, this uses sets of grouped_input_scenes that have already instantiated their filter nodes. It choose one or more options from that set of shared attributes, then layers additional transformations or computations after it.
     Returns: instantiated_text (String text of instantiated program), program (an array of program nodes), input_scenes, answers, did_succeed (Boolean)
     """
+    did_succeed = False # Flag set to indicate success instantiating
     
     # First, we construct the instantiated program itself, using a filter option selected from one of the grouped scenes. This involves destructively modifying the program nodes themselves. 
     # params are the placeholder parameter variables (e.g. <S>, Size) that must be grounded out into attributes
@@ -268,18 +269,18 @@ def instantiate_extended_template_from_grouped_scenes(
     for original_idx, node in enumerate(template['nodes']):
         if node['type'] == 'scene': 
             instantiated_program.append(node)
-        elif node['type'] == PRIMITIVE_FILTER:
+        elif node['type'] == PRIMITIVE_FILTER: # Un-expanded filter node
             filter_program, input_scenes = build_filter_option(grouped_input_scenes=grouped_input_scenes, filter_node=node, constraints=template["constraints"], group=template['group'], params=params, original_idx=original_idx, curr_node_idx=len(instantiated_program), new_node_idxs=new_node_idxs)
             instantiated_program += filter_program
-        elif node['type'] == 'transform':
-            instantiated_program += build_transform_option(node, template["constraints"], metadata, params, original_idx=original_idx, curr_node_idx=len(instantiated_program), new_node_idxs=new_node_idxs)
+        elif node['type'] == PRIMITIVE_TRANSFORM: # Un-expanded transform node
+            instantiated_program += build_transform_option(transform_node=node, constraints=template["constraints"], metadata=metadata, params=template['params'], original_idx=original_idx, curr_node_idx=len(instantiated_program), new_node_idxs=new_node_idxs)
         else:
-            instantiated_program += build_instantiated_program_node(f, metadata, curr_node_idx=len(instantiated_program), original_idx=original_idx, new_node_idxs=new_node_idxs, params=params)
+            instantiated_program += build_other_instantiated_program_node(other_node=node, metadata=metadata, curr_node_idx=len(instantiated_program), original_idx=original_idx, new_node_idxs=new_node_idxs, params=params)
             
     # Build the program text
     instantiated_text = instantiate_question_text(template, params, template["constraints"])
     if len(instantiated_text) < 1:
-        return [], None, None, None
+        return [], None, None, None, did_succeed
     
     # Run the program on the scenes to generate the answers
     answers = []
@@ -292,8 +293,10 @@ def instantiate_extended_template_from_grouped_scenes(
         answers.append(ans)
     # Don't allow the answers to all be identical
     if type(answers[0]) is not dict and len(set(answers)) < 2:
-        return [], None, None, None
-    return instantiated_text, instantiated_program, input_scenes, answers
+        return [], None, None, None, did_succeed
+    
+    did_succeed = True
+    return instantiated_text, instantiated_program, input_scenes, answers, did_succeed
 
 def build_filter_option(grouped_input_scenes, filter_node, constraints, group, params, original_idx, curr_node_idx, new_node_idxs):
     """
@@ -369,8 +372,7 @@ def build_transform_option(transform_node, constraints, metadata, params, origin
     }
         
     Returns:
-        filter_program: [array of filter nodes that point to each other]
-        grouped_scenes_object: the object for the corresponding grouped scenes we filtered on.
+        transform_program: [array of transform nodes that point to each other]
     Modifies: new_node_idx so that the filter node now points to the end of the filter chain.
     template['params'] to contain the instantiated parameter
     """
@@ -410,7 +412,51 @@ def build_transform_option(transform_node, constraints, metadata, params, origin
     # Redirect anything that pointed to this node to take from the final transform node
     new_node_idxs[original_idx] = len(transform_program) + curr_node_idx - 1
     return transform_program
+            
+def build_other_instantiated_program_node(other_node, metadata, curr_node_idx, original_idx, new_node_idxs, params):
+    """
+    Constructs other forms of program nodes (such as remove), instantiating unbound parameters randomly and setting the node pointer indices to the updated values.
+    
+    Returns:
+        instantiated_program: [array of nodes updated with instantiated params]
+        grouped_scenes_object: the object for the corresponding grouped scenes we filtered on.
+    Modifies: new_node_idx so that this node now points to its new current value in the potentially overall extended prgram.
+    template['params'] to contain the instantiated parameters.
+    """
+    param_to_val = {p['name'] : p['value'] for p in params if 'value' in p}
+    
+    # Instantiate any unbound parameters.
+    if 'side_inputs' not in other_node:
+        side_inputs = []
+    else:
+        side_inputs = []
+        for param_name in other_node['side_inputs']:
+            if param_name in param_to_val:
+                side_inputs.append(param_to_val[param_name])
+            else:
+                # Instantiate any unbound parameters.
+                side_inputs.append(instantiate_param_random(param_name, metadata, params))
+    
+    instantiated_program =  [{
+        "type" : other_node["type"],
+        "side_inputs" : side_inputs,
+        "inputs" : [new_node_idxs[old_idx] for old_idx in other_node["inputs"]]
+    }]
+    new_node_idxs[original_idx] = len(instantiated_program) + curr_node_idx - 1
+    return instantiated_program
 
+def instantiate_param_random(param_name, metadata, params):
+    """
+    Instantiates the param_name parameter by randomly selecting from the set of choices for a given parameter type.
+    Modifies: params dictionary to include an instantiated value.
+    """
+    for p in params:
+        if p['name'] == param_name:
+            param_choices = set(metadata['types'][p['type']])
+            param_choice = random.choice(list(param_choices))
+            p['value'] = param_choice
+            return p['value']
+    assert False # We should have found the parameter we tried to instantiate.
 
 def instantiate_templates_extended(all_input_scenes,
                                    grouped_input_scenes,
@@ -471,37 +517,6 @@ def instantiate_question_text(template, params, constraints):
         instantiated_text = " ".join(instantiated_text.split())
         instantiated_texts.append(instantiated_text)
     return instantiated_texts
-
-def instantiate_param_random(param_name, metadata, params):
-    for p in params:
-        if p['name'] == param_name:
-            param_choices = set(metadata['types'][p['type']])
-            param_choice = random.choice(list(param_choices))
-            p['value'] = param_choice
-            return p['value']
-            
-def build_instantiated_program_node(f, metadata, curr_node_idx, original_idx, new_node_idxs, params):
-    param_to_val = {p['name'] : p['value'] for p in params if 'value' in p}
-    
-    # Instantiate any unbound parameters.
-    if 'side_inputs' not in f:
-        side_inputs = []
-    else:
-        side_inputs = []
-        for param_name in f['side_inputs']:
-            if param_name in param_to_val:
-                side_inputs.append(param_to_val[param_name])
-            else:
-                # Instantiate any unbound parameters.
-                side_inputs.append(instantiate_param_random(param_name, metadata, params))
-    
-    program =  [{
-        "type" : f["type"],
-        "side_inputs" : side_inputs,
-        "inputs" : [new_node_idxs[old_idx] for old_idx in f["inputs"]]
-    }]
-    new_node_idxs[original_idx] = len(program) + curr_node_idx - 1
-    return program
     
 def main(args):
     set_random_seed(args)

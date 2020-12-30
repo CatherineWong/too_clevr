@@ -206,12 +206,14 @@ def test_generate_questions_for_template_file():
         instances_per_template=INSTANCES_PER_TEMPLATE,
         n_scenes_per_question=N_SCENES_PER_QUESTION,
     )
+    training_text_questions = {mock_filename : []}
     
     generated_questions = gen_questions_n_inputs.generate_questions_for_template_file(args=mock_args,
         templates_for_file=mock_templates,
         dataset_split=SPLIT,
         metadata=metadata,
-        all_scenes=all_scenes)
+        all_scenes=all_scenes,
+        training_text_questions=training_text_questions)
     
     assert len(generated_questions) == INSTANCES_PER_TEMPLATE * len(mock_templates)
     
@@ -235,7 +237,10 @@ def test_generate_questions_for_all_template_files():
         n_scenes_per_question=N_SCENES_PER_QUESTION,
     )
     
-    generated_questions_dict = gen_questions_n_inputs.generate_questions_for_all_template_files(mock_args,mock_templates,SPLIT, metadata, all_scenes)
+    # Generate mock training test questions
+    training_text_questions = {template_filename : [] for template_filename in mock_templates}
+    
+    generated_questions_dict = gen_questions_n_inputs.generate_questions_for_all_template_files(mock_args,mock_templates,SPLIT, metadata, all_scenes, training_text_questions)
     
     for template_fn in generated_questions_dict:
         assert template_fn in mock_templates

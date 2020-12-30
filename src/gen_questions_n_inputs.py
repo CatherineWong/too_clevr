@@ -33,6 +33,7 @@ TEMPLATE_RESTRICTED_QUESTIONS = {
     '1_compare_integer' : [0, 1, 2],
 }
 NUM_SAMPLE_QUESTIONS_TO_DISPLAY = 5
+TRAIN_SPLIT, VAL_SPLIT = 'train', 'val'
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--random_seed', default=0)
@@ -109,6 +110,25 @@ def get_question_metadata(args):
     
     return metadata
 
+def get_training_text_questions(args, split):
+    """Loads the training text questions for the template files if this is a validation split, so that we can avoid generating them for the validation split.
+    Returns: {template_filename : []}
+    """
+    training_questions = dict()
+    if split == VAL_SPLIT:
+        for template_filename in args.question_templates:
+            output_filename = os.path.join(args.output_questions_directory, f"{args.output_questions_prefix}_{split}_{template_filename}.json")
+            with open(output_filename, 'r') as f:
+                training_data = json.load(f)
+                text_questions = [question['question'] for question in training_data['questions']]
+                print(f"Loaded {len(text_questions)} training questions from {output_filename} for {template_filename}")
+                training_questions[template_filename] = text_questions
+    else:
+        print(f"Split is training split, not loading training questions.")
+        return {template_filename : [] for template_filename in args.question_templates}
+        
+    return training_questions
+
 def get_question_templates(args, metadata):
     """Returns a dictionary of question templates for each file containing templates on a partiular question class: {template_filename :
         {(template_filename, original_question_idx): template}
@@ -148,10 +168,13 @@ def instantiate_templates_dfs_multiple_inputs(
                 answer_counts, # Holdover to allow answer distribution.
                 max_instances=None, # Maximum instances of this template.
                 n_scenes_per_question=None,
-                max_time=100):
+                max_time=100,
+                training_questions_for_file=None):
     """
     Attempts to generate text questions that are valid for a set of n_scenes_per_question inputs.
     Uses a direct generalization of the original CLEVR instatiate_templates_qs code and simply reorganizes to attempt to generate multiple inputs per question.
+    
+    Avoids questions in training_questions_for_file.
     
     Contains heuristics to attempt to balance the length of the questions.
     Returns {question_text : [(scene, structured_question, structured_answer)]}.
@@ -175,9 +198,13 @@ def instantiate_templates_dfs_multiple_inputs(
                         max_instances=1000,
                         verbose=False,
                         no_empty_filter=True)
+        non_duplicated_text_questions = []
         for i, tq in enumerate(ts):
+            if tq in training_questions_for_file: continue # Avoid training questions to prevent duplication in the validation set.
             text_questions[tq].append((s, qs[i], ans[i])) 
-        scenes_per_q.update(ts)
+            non_duplicated_text_questions.append(tq)
+            
+        scenes_per_q.update(non_duplicated_text_questions)
         
         buckets_to_text, valid_qs = get_valid_questions_by_text_length_bucket(scenes_per_q, text_questions, n_scenes_per_question, metadata=metadata, num_buckets=4)
         
@@ -248,8 +275,6 @@ def get_valid_questions_by_text_length_bucket(scenes_per_q, text_questions, n_sc
                 
     return buckets_to_text, valid_qs
     
-    
-
 def postprocess_instantiated_questions(instantiated_questions,
 dataset_split, template_filename, template_index):
     """
@@ -294,13 +319,15 @@ dataset_split, template_filename, template_index):
     return post_processed_questions
 
 def generate_questions_for_template_file(args, templates_for_file,
-    dataset_split, metadata, all_scenes):
+    dataset_split, metadata, all_scenes, training_questions_for_file):
     """
     Attempts to generate a set of questions for a single template file.
     Takes a single dict containing the question templates for a particular file in the form:
         {(template_filename, original_question_idx): template}
         
     For each question in the template file, attepts repeatedly to instantiate questions, up to a given number of tries.
+    
+    Avoids questions in 'training questions for file'.
     Returns a list of questions indexed for that template.
     """
     max_tries = args.max_generation_tries_per_instantiation
@@ -323,7 +350,8 @@ def generate_questions_for_template_file(args, templates_for_file,
             max_time=max_time,
             max_instances=args.instances_per_template,
             n_scenes_per_question=args.n_scenes_per_question,
-            answer_counts=None)
+            answer_counts=None,
+            training_questions_for_file=training_questions_for_file)
             
             postprocessed_questions = postprocess_instantiated_questions(instantiated_questions,
                 dataset_split=dataset_split, template_filename=template_filename,
@@ -347,7 +375,7 @@ def generate_questions_for_template_file(args, templates_for_file,
     return generated_questions
 
 def generate_questions_for_all_template_files(args, all_templates,
-    dataset_split, metadata, all_scenes):
+    dataset_split, metadata, all_scenes, training_text_questions):
     """
     Generates a set of questions for a set of template files.
     Attempts to generate a set of questions for a single template file.
@@ -361,8 +389,8 @@ def generate_questions_for_all_template_files(args, all_templates,
     all_generated_questions = {}
     for template_filename in all_templates:
         templates_for_file = all_templates[template_filename]
-        questions_for_file = generate_questions_for_template_file(args, templates_for_file,
-            dataset_split, metadata, all_scenes)
+        training_questions_for_file = training_text_questions[template_filename]
+        questions_for_file = generate_questions_for_template_file(args, templates_for_file, dataset_split, metadata, all_scenes, training_questions_for_file)
         
         all_generated_questions[template_filename] = questions_for_file
     return all_generated_questions
@@ -385,9 +413,10 @@ def main(args):
     scene_file, all_scenes, scene_info = get_input_scenes(args)
     metadata = get_question_metadata(args)
     all_question_templates = get_question_templates(args, metadata)
-
+    training_text_questions = get_training_text_questions(args, scene_info['split'])
+    
     all_generated_questions = generate_questions_for_all_template_files(args,
-    all_question_templates, scene_info['split'], metadata, all_scenes)
+    all_question_templates, scene_info['split'], metadata, all_scenes, training_text_questions)
 
     write_output_questions_files(args, scene_info, all_generated_questions)
 

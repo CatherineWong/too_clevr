@@ -117,7 +117,7 @@ def get_training_text_questions(args, split):
     training_questions = dict()
     if split == VAL_SPLIT:
         for template_filename in args.question_templates:
-            output_filename = os.path.join(args.output_questions_directory, f"{args.output_questions_prefix}_{split}_{template_filename}.json")
+            output_filename = os.path.join(args.output_questions_directory, f"{args.output_questions_prefix}_{TRAIN_SPLIT}_{template_filename}.json")
             with open(output_filename, 'r') as f:
                 training_data = json.load(f)
                 text_questions = [question['question'] for question in training_data['questions']]
@@ -208,28 +208,26 @@ def instantiate_templates_dfs_multiple_inputs(
         
         buckets_to_text, valid_qs = get_valid_questions_by_text_length_bucket(scenes_per_q, text_questions, n_scenes_per_question, metadata=metadata, num_buckets=4)
         
-        
         if len(valid_qs) >= max_instances:
             num_valid_questions_per_bucket = [len(value) for value in buckets_to_text.values()]
             num_buckets = len(buckets_to_text)
             # Break when we have roughly the minimum number for even distribution in each bucket.
-            if min(num_valid_questions_per_bucket) >= (max_instances / num_buckets):
+            num_per_bucket = max((max_instances / num_buckets), 1)
+            if min(num_valid_questions_per_bucket) >= num_per_bucket:
                 break
         toc = time.time()
         if (toc - tic) > max_time:
             print("Out of time!")
             break
-    
     # Try to get a range of questions.
-    # Randomly sample among the question in valid qs by text length bucket.
+    # Randomly sample among the question in valid qs by text length bucket, favoring longer buckets when possible
     final_qs = []
-    for bucket in buckets_to_text:
+    for bucket in sorted(buckets_to_text, reverse=True):
         if len(buckets_to_text[bucket]) == 0: continue
         num_buckets = len(buckets_to_text)
         num_per_bucket = max(1, int(max_instances / num_buckets))
         questions_for_bucket = random.sample(buckets_to_text[bucket], min(num_per_bucket, len(buckets_to_text[bucket])))
         final_qs += questions_for_bucket
-        
     text_questions = {
         q : random.sample(text_questions[q], n_scenes_per_question)
         for q in final_qs

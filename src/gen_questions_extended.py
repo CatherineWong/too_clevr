@@ -36,6 +36,8 @@ DEFAULT_EXTENDED_TEMPLATES_DIR = "../metadata/clevr_extended_metadata/question_t
 
 GENERATE_ALL_FLAG = 'all'
 
+NUM_SAMPLE_QUESTIONS_TO_DISPLAY = 5
+
 # Special extended question primitives
 PRIMITIVE_FILTER = "filter"
 PRIMITIVE_TRANSFORM = "transform"
@@ -144,7 +146,6 @@ def get_question_templates(args, metadata):
         {(template_filename, original_question_idx): template}
     }"""
     generate_all = (args.question_templates == [GENERATE_ALL_FLAG])
-    
     candidate_template_files = [file for file in os.listdir(args.template_dir) if file.endswith('.json')]
     
     templates = dict()
@@ -197,6 +198,7 @@ def generate_questions_for_template_file(args, templates_for_file, dataset_split
     templates_items = list(templates_for_file.items())
     for i, ((template_filename, template_index), template) in enumerate(templates_items):
         print(f'Trying question template {template_filename} {template_index} : {i}/{len(templates_items)} in this file.') 
+        print(f"Question template text: {template['text'][0]}")
         
         instantiated_questions = instantiate_extended_template_multiple_inputs(all_scenes=all_scenes,
                                                       grouped_scenes=grouped_scenes,
@@ -210,6 +212,11 @@ def generate_questions_for_template_file(args, templates_for_file, dataset_split
         
         postprocessed_questions = postprocessed_questions[:args.instances_per_template]
         generated_questions += postprocessed_questions
+        
+        # Display a sample of the final questions
+        print(f"Sample question text:")
+        for question in random.sample(postprocessed_questions, min(NUM_SAMPLE_QUESTIONS_TO_DISPLAY, len(postprocessed_questions))):
+            print(f"\t: {question['question']}")
     
     # Add indices to all of the questions for this template file
     for question_index, question in enumerate(generated_questions):
@@ -244,11 +251,70 @@ def instantiate_extended_template_multiple_inputs(all_scenes,
         if text in generated_text_questions: continue # Don't repeat questions
         generated_text_questions[text] = (scenes, programs, answers)
         
+        buckets_to_text = get_valid_questions_by_text_length_bucket(generated_text_questions, metadata=metadata, num_buckets=3)
+        
         if len(generated_text_questions) > max_instances:
-            break
+            num_valid_questions_per_bucket = [len(value) for value in buckets_to_text.values()]
+            num_buckets = len(buckets_to_text)
+            # Break when we have roughly the minimum number for even distribution in each bucket.
+            num_per_bucket = max((max_instances / num_buckets), 1)
+            if min(num_valid_questions_per_bucket) >= num_per_bucket:
+                break
+    # Try to get a range of questions.
+    # Randomly sample among the question in valid qs by text length bucket, favoring longer buckets when possible
+    final_qs = []
+    for bucket in sorted(buckets_to_text, reverse=True):
+        if len(buckets_to_text[bucket]) == 0: continue
+        num_buckets = len(buckets_to_text)
+        num_per_bucket = max(1, int(max_instances / num_buckets))
+        questions_for_bucket = random.sample(buckets_to_text[bucket], min(num_per_bucket, len(buckets_to_text[bucket])))
+        final_qs += questions_for_bucket
+    text_questions = {
+        q : generated_text_questions[q]
+        for q in final_qs
+    } 
     
-    return generated_text_questions
+    return text_questions
 
+def get_valid_questions_by_text_length_bucket(text_questions, metadata, num_buckets=3):
+    """
+    Partitions the text questions into buckets based on how many attribute words they have, counting how many valid questions we have in each text bucket.
+    """
+    attribute_words = []
+    for type in metadata['types']:
+        if metadata['types'][type] is not None:
+            attribute_words += metadata['types'][type]
+            attribute_words += [w + 's' for w in metadata['types'][type]] # plurals
+    # Length is the number of attribute words in a given text question.
+    text_questions_to_length = {
+        text_question : len([w for w in text_question.split() if w in attribute_words]) for text_question in text_questions
+    }
+    all_lengths = list(text_questions_to_length.values())
+    max_length, min_length = max(all_lengths), min(all_lengths)
+    min_length = max(1, min_length)# Don't allow degenerate questions with no attribute words
+    bucket_size = max(int((max_length - min_length) / num_buckets), 1) 
+    buckets = list(range(min_length, max_length, bucket_size))
+    
+    if len(buckets) == 0: # Special case: no buckets.
+        buckets = [0, max_length + 1]
+    elif buckets[-1] <= max_length:
+        buckets.append(max_length + 1)
+    # Buckets are keyed by (lower_bound, upper_bound) on question length
+    buckets_to_text = {
+        (buckets[i], buckets[i+1]) : []
+        for i in range(len(buckets) - 1)
+    }
+    
+    # Divvy up the questions by bucket length.
+    for text_question in text_questions:
+        length = text_questions_to_length[text_question]
+        # Find the bucket it goes in
+        for (lower_bound, upper_bound) in buckets_to_text:
+            if (length >= lower_bound) and (length < upper_bound):
+                buckets_to_text[(lower_bound, upper_bound)].append(text_question)
+                
+    return buckets_to_text
+    
 def postprocess_instantiated_questions(instantiated_questions,
     dataset_split, template_filename, template_index):
     """

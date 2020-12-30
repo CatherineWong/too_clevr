@@ -326,7 +326,7 @@ def main(args):
     all_question_templates = get_question_templates(args, metadata)
 
     all_generated_questions = generate_questions_for_all_template_files(args,
-     all_question_templates, scene_info['split'], metadata, all_scenes)
+    all_question_templates, scene_info['split'], metadata, all_scenes)
 
     write_output_questions_files(args, scene_info, all_generated_questions)
 

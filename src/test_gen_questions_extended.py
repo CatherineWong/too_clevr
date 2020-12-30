@@ -1,12 +1,13 @@
 import gen_questions_extended as to_test
 
 import os
+import json
 from types import SimpleNamespace as MockArgs
 
 def set_random_seed():
     RANDOM_SEED = 0
     mock_args = MockArgs(random_seed=RANDOM_SEED)
-    gen_questions_n_inputs.set_random_seed(mock_args)
+    to_test.set_random_seed(mock_args)
 
 def get_default_metadata():
     mock_args = MockArgs(metadata_file=to_test.DEFAULT_EXTENDED_QUESTION_METADATA)
@@ -40,6 +41,21 @@ def get_default_transformation_question_template_choose_all():
 
 def get_default_remove_question_template():
     return {"text": ["If you removed the <C> things, how many <S>s would be left?"], "nodes": [{"inputs": [], "type": "scene"}, {"side_inputs": ["<C>"], "inputs": [0], "type": "filter"}, {"inputs": [0, 1], "type": "remove"}, {"side_inputs": ["<S>"], "inputs": [2], "type": "filter_shape"}, {"inputs": [3], "type": "count"}], "constraints": {"filter": "choose_exactly"}, "group": "multiple", "params": [{"type": "Size", "name": "<Z>"}, {"type": "Color", "name": "<C>"}, {"type": "Material", "name": "<M>"}, {"type": "Shape", "name": "<S>"}, {"type": "Relation", "name": "<R>"}]}
+
+def get_default_question_template_file(mock_filename='mock_template_fn'):
+    return mock_filename, {
+        (mock_filename, 0) : get_default_transformation_question_template_choose_some(),
+        (mock_filename, 1) : get_default_transformation_question_template_choose_all(),
+    }
+    
+def get_default_multiple_question_template_files():
+    MOCK_FILENAME_BASE = "mock_template_fn"
+    question_templates = dict()
+    for filename_idx in [1,2]:
+        mock_filename = f"{MOCK_FILENAME_BASE}_{filename_idx}"
+        _, question_template = get_default_question_template_file(mock_filename)
+        question_templates[mock_filename] = question_template
+    return question_templates
     
 def test_get_input_scenes_and_grouped_scenes_default_train():
     """Tests that we get the default set of training and grouped scenes when no other input scenes are provided."""
@@ -294,20 +310,220 @@ def test_instantiate_extended_template_from_grouped_scenes_localization():
         else:
             assert node['type'].startswith('filter_')
             assert len(node['side_inputs']) == 1
-
-def test_instantiate_extended_template_from_grouped_scenes_remove():
-    """Test the instantiation of a template that requires remove: filtering down a set of initial objects to a set that satisfies one or more attributes, then removing them."""
     
+    for answer in answers:
+        # Check that they are scenes
+        assert 'objects' in answer
+def test_instantiate_extended_template_from_grouped_scenes_remove():
+    """Test the instantiation of a template that requires removal: filtering down a set of initial objects to a set that satisfies one or more attributes, then removing them."""
+    metadata = get_default_metadata()
+    all_scenes = get_default_all_scenes()
+    grouped_scenes = get_default_grouped_scenes()
+    template = get_default_remove_question_template()
+    
+    instantiated_text, instantiated_program, input_scenes, answers, did_succeed = to_test.instantiate_extended_template_from_grouped_scenes(
+        all_scenes,
+        grouped_scenes,
+        template,
+        metadata)
+    
+    assert did_succeed 
+    assert "<" not in instantiated_text
+    assert len(input_scenes['input_image_indexes']) == len(answers)
+    
+    has_remove = False
+    for node_index, node in enumerate(instantiated_program):
+        if node_index == 0:
+            assert node['type'] == 'scene'
+        if node['type'] == 'remove':
+            has_remove = True
+    assert has_remove
+    
+    for answer_index, answer in enumerate(answers):
+        assert type(answer) == type(0)
+            
 def test_instantiate_extended_template_from_grouped_scenes_transform():
     """Test the instantiation of a template that requires transform: filtering down a set of initial objects to a set that satisfies one or more attributes, then removing them."""
-    pass
+    metadata = get_default_metadata()
+    all_scenes = get_default_all_scenes()
+    grouped_scenes = get_default_grouped_scenes()
+    template = get_default_transformation_question_template_choose_some()
+    
+    instantiated_text, instantiated_program, input_scenes, answers, did_succeed = to_test.instantiate_extended_template_from_grouped_scenes(
+        all_scenes,
+        grouped_scenes,
+        template,
+        metadata)
+    
+    assert did_succeed 
+    assert "<" not in instantiated_text
+    assert len(input_scenes['input_image_indexes']) == len(answers)
+    
+    has_transform = False
+    for node_index, node in enumerate(instantiated_program):
+        if node_index == 0:
+            assert node['type'] == 'scene'
+        if 'transform_' in node['type']:
+            has_transform = True
+    assert has_transform
 
+    for answer in answers:
+        # Check that they are scenes
+        assert 'objects' in answer
 
-def test_instantiate_templates_extended():
-    pass
+def test_instantiate_extended_template_multiple_inputs():
+    set_random_seed()
+    max_instances = 5
+    max_tries = 200
+    all_scenes = get_default_all_scenes()
+    all_grouped_scenes = get_default_grouped_scenes()
+    metadata = get_default_metadata()
+    
+    TEST_QUESTION_TEMPLATE = get_default_transformation_question_template_choose_all()
+    
+    instantiated_questions = to_test.instantiate_extended_template_multiple_inputs(all_scenes=all_scenes,
+                                                      grouped_scenes=all_grouped_scenes,
+                                                      template=TEST_QUESTION_TEMPLATE,
+                                                      metadata=metadata,
+                                                      max_instances=max_instances,
+                                                      max_tries=max_tries)
+    assert(len(instantiated_questions) >= max_instances)
+    for question_text in instantiated_questions:
+        (scenes, programs, answers) = instantiated_questions[question_text]
+        assert len(scenes['input_image_filenames']) > 0
+        assert len(scenes['input_image_filenames']) == len(answers)
+        assert len(scenes['input_image_indexes']) == len(answers)    
+                                        
+def test_postprocess_instantiated_questions():
+    set_random_seed()
+    
+    # Instantiate a set of questions.
+    max_instances = 5
+    max_tries = 200
+    all_scenes = get_default_all_scenes()
+    all_grouped_scenes = get_default_grouped_scenes()
+    metadata = get_default_metadata()
+    
+    # Find out the size of a question group.
+    n_scenes_per_question = len(all_grouped_scenes['unique']['0']["input_image_filenames"])
+    
+    TEST_QUESTION_TEMPLATE = get_default_transformation_question_template_choose_all()
+    
+    instantiated_questions = to_test.instantiate_extended_template_multiple_inputs(all_scenes=all_scenes,
+                                                      grouped_scenes=all_grouped_scenes,
+                                                      template=TEST_QUESTION_TEMPLATE,
+                                                      metadata=metadata,
+                                                      max_instances=max_instances,
+                                                      max_tries=max_tries)
+    SPLIT = 'split'
+    TEMPLATE_FILENAME = "test_template"
+    TEMPLATE_INDEX = 10
+    postprocessed_questions = to_test.postprocess_instantiated_questions(instantiated_questions,
+    dataset_split=SPLIT, template_filename=TEMPLATE_FILENAME,
+    template_index=TEMPLATE_INDEX)
+    
+    assert len(postprocessed_questions) >= max_instances
+    for question in postprocessed_questions:
+            assert question['split'] == SPLIT
+            assert question['question'] in instantiated_questions
+            assert question['template_filename'] == TEMPLATE_FILENAME
+            assert question['template_index'] ==     TEMPLATE_INDEX
+            assert len(question['answers']) == n_scenes_per_question
+            assert len(question['image_filenames']) == n_scenes_per_question
+            assert len(question['image_indices']) == n_scenes_per_question
+    
 def test_generate_questions_for_template_file():
-    pass
+    set_random_seed()
+    all_scenes = get_default_all_scenes()
+    all_grouped_scenes = get_default_grouped_scenes()
+    metadata = get_default_metadata()
+    mock_filename, mock_templates = get_default_question_template_file()
+    
+    # Find out the size of a question group.
+    n_scenes_per_question = len(all_grouped_scenes['unique']['0']["input_image_filenames"])
+    
+    SPLIT = 'split'
+    INSTANCES_PER_TEMPLATE = 5 
+    mock_args = MockArgs(
+        max_generation_tries_per_instantiation=200,
+        instances_per_template=INSTANCES_PER_TEMPLATE,
+    )
+    
+    generated_questions = to_test.generate_questions_for_template_file(args=mock_args,
+        templates_for_file=mock_templates,
+        dataset_split=SPLIT,
+        metadata=metadata,
+        all_scenes=all_scenes,
+        grouped_scenes=all_grouped_scenes)
+    assert len(generated_questions) == INSTANCES_PER_TEMPLATE * len(mock_templates)
+    
+    for question_index, question in enumerate(generated_questions):
+        assert question['question_index'] == question_index
+    
 def test_generate_questions_for_all_template_files():
-    pass 
+    set_random_seed()
+    all_scenes = get_default_all_scenes()
+    all_grouped_scenes = get_default_grouped_scenes()
+    metadata = get_default_metadata()
+    mock_templates = get_default_multiple_question_template_files()
+    
+    # Find out the size of a question group.
+    n_scenes_per_question = len(all_grouped_scenes['unique']['0']["input_image_filenames"])
+    SPLIT = 'split'
+    INSTANCES_PER_TEMPLATE = 5
+    mock_args = MockArgs(
+        max_generation_tries_per_instantiation=200,
+        instances_per_template=INSTANCES_PER_TEMPLATE,
+    )
+    generated_questions_dict = to_test.generate_extended_questions_for_all_template_files(args=mock_args,
+        all_templates=mock_templates,
+        dataset_split=SPLIT,
+        metadata=metadata,
+        all_scenes=all_scenes,
+        all_grouped_scenes=all_grouped_scenes)
+    
+    for template_fn in generated_questions_dict:
+        assert template_fn in mock_templates
+        generated_questions = generated_questions_dict[template_fn]
+        
+        for question_index, question in enumerate(generated_questions):
+            assert question['question_index'] == question_index
+            assert question['template_filename'] == template_fn
+     
 def test_integration_main(tmpdir):
-    pass
+    # Find out the size of a question group.
+    all_grouped_scenes = get_default_grouped_scenes()
+    n_scenes_per_question = len(all_grouped_scenes['unique']['0']["input_image_filenames"])
+    
+    INSTANCES_PER_TEMPLATE = 5
+    OUTPUT_QUESTIONS_PREFIX = "TEST"
+    QUESTION_TEMPLATES = ["2_remove", "2_transform"]
+    GOLD_FILE_NAMES = [f"{OUTPUT_QUESTIONS_PREFIX}_train_{template_fn}.json" for template_fn in QUESTION_TEMPLATES]
+    mock_args = MockArgs(
+        random_seed=0,
+        default_train_scenes=True,
+        default_val_scenes=False,
+        input_scene_file=None,
+        metadata_file=to_test.DEFAULT_EXTENDED_QUESTION_METADATA,
+        template_dir=to_test.DEFAULT_EXTENDED_TEMPLATES_DIR,
+        question_templates=QUESTION_TEMPLATES,
+        max_generation_tries_per_instantiation=200,
+        instances_per_template=INSTANCES_PER_TEMPLATE,
+        output_questions_prefix=OUTPUT_QUESTIONS_PREFIX,
+        output_questions_directory=tmpdir
+    )
+    to_test.main(mock_args)
+    
+    files_in_dir = os.listdir(tmpdir)
+    assert len(files_in_dir) == len(GOLD_FILE_NAMES)
+    for filename in GOLD_FILE_NAMES:
+        assert filename in files_in_dir
+    
+    for filename in GOLD_FILE_NAMES:
+        with open(os.path.join(tmpdir, filename), 'r') as f:
+            questions = json.load(f)['questions']
+            assert type(questions) == type([])
+            test_question = questions[0]
+            assert test_question['split'] == 'train'
+            assert test_question['template_filename'] in QUESTION_TEMPLATES
+            assert len(test_question['answers']) == n_scenes_per_question

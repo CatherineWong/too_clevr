@@ -32,6 +32,7 @@ TEMPLATE_RESTRICTED_QUESTIONS = {
     '1_single_or' : [0, 1, 2, 4, 5],
     '1_compare_integer' : [0, 1, 2],
 }
+NUM_SAMPLE_QUESTIONS_TO_DISPLAY = 5
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--random_seed', default=0)
@@ -151,6 +152,8 @@ def instantiate_templates_dfs_multiple_inputs(
     """
     Attempts to generate text questions that are valid for a set of n_scenes_per_question inputs.
     Uses a direct generalization of the original CLEVR instatiate_templates_qs code and simply reorganizes to attempt to generate multiple inputs per question.
+    
+    Contains heuristics to attempt to balance the length of the questions.
     Returns {question_text : [(scene, structured_question, structured_answer)]}.
     """
     tic = time.time()
@@ -172,28 +175,80 @@ def instantiate_templates_dfs_multiple_inputs(
                         max_instances=1000,
                         verbose=False,
                         no_empty_filter=True)
-        
-        # We index the set of questions 
         for i, tq in enumerate(ts):
             text_questions[tq].append((s, qs[i], ans[i])) 
-        
         scenes_per_q.update(ts)
-        valid_qs = [q for q, count in scenes_per_q.items() if count >= n_scenes_per_question] 
+        
+        buckets_to_text, valid_qs = get_valid_questions_by_text_length_bucket(scenes_per_q, text_questions, n_scenes_per_question, metadata=metadata, num_buckets=4)
+        
+        
         if len(valid_qs) >= max_instances:
-            break
+            num_valid_questions_per_bucket = [len(value) for value in buckets_to_text.values()]
+            num_buckets = len(buckets_to_text)
+            # Break when we have roughly the minimum number for even distribution in each bucket.
+            if min(num_valid_questions_per_bucket) >= (max_instances / num_buckets):
+                break
         toc = time.time()
         if (toc - tic) > max_time:
             print("Out of time!")
             break
     
     # Try to get a range of questions.
-    # Randomly sample among the question in valid qs.
-    final_qs = random.sample(valid_qs, min(max_instances, len(valid_qs)))
+    # Randomly sample among the question in valid qs by text length bucket.
+    final_qs = []
+    for bucket in buckets_to_text:
+        if len(buckets_to_text[bucket]) == 0: continue
+        num_buckets = len(buckets_to_text)
+        num_per_bucket = max(1, int(max_instances / num_buckets))
+        questions_for_bucket = random.sample(buckets_to_text[bucket], min(num_per_bucket, len(buckets_to_text[bucket])))
+        final_qs += questions_for_bucket
+        
     text_questions = {
         q : random.sample(text_questions[q], n_scenes_per_question)
         for q in final_qs
     } 
     return text_questions
+
+def get_valid_questions_by_text_length_bucket(scenes_per_q, text_questions, n_scenes_per_question, metadata, num_buckets=3):
+    """
+    Partitions the text questions into buckets based on how many attribute words they have, counting how many valid questions we have in each text bucket.
+    """
+    attribute_words = []
+    for type in metadata['types']:
+        if metadata['types'][type] is not None:
+            attribute_words += metadata['types'][type]
+            attribute_words += [w + 's' for w in metadata['types'][type]] # plurals
+    
+    # Length is the number of attribute words in a given text question.
+    text_questions_to_length = {
+        text_question : len([w for w in text_question.split() if w in attribute_words]) for text_question in text_questions
+    }
+    all_lengths = list(text_questions_to_length.values())
+    max_length, min_length = max(all_lengths), min(all_lengths)
+    min_length = max(1, min_length)# Don't allow degenerate questions with no attribute words
+    bucket_size = max(int((max_length - min_length) / num_buckets), 1) 
+    buckets = list(range(min_length, max_length, bucket_size))
+    if buckets[-1] <= max_length:
+        buckets.append( max_length + 1)
+    # Buckets are keyed by (lower_bound, upper_bound) on question length
+    buckets_to_text = {
+        (buckets[i], buckets[i+1]) : []
+        for i in range(len(buckets) - 1)
+    }
+    
+    # Divvy up the valid questions by bucket length.
+    valid_qs = [q for q, count in scenes_per_q.items() if count >= n_scenes_per_question] 
+    
+    for valid_text_question in valid_qs:
+        length = text_questions_to_length[valid_text_question]
+        # Find the bucket it goes in
+        for (lower_bound, upper_bound) in buckets_to_text:
+            if (length >= lower_bound) and (length < upper_bound):
+                buckets_to_text[(lower_bound, upper_bound)].append(valid_text_question)
+                
+    return buckets_to_text, valid_qs
+    
+    
 
 def postprocess_instantiated_questions(instantiated_questions,
 dataset_split, template_filename, template_index):
@@ -255,6 +310,7 @@ def generate_questions_for_template_file(args, templates_for_file,
     templates_items = list(templates_for_file.items())
     for i, ((template_filename, template_index), template) in enumerate(templates_items):
         print(f'Trying question template {template_filename} {template_index} : {i}/{len(templates_items)} in this file.') 
+        print(f"Question template text: {template['text'][0]}")
         
         curr_try = 0
         questions_for_template = []
@@ -276,7 +332,12 @@ def generate_questions_for_template_file(args, templates_for_file,
             curr_try += 1
             questions_for_template += postprocessed_questions
             if len(questions_for_template) >= args.instances_per_template or curr_try >= max_tries:
-                generated_questions += questions_for_template[:args.instances_per_template]
+                selected_questions = questions_for_template[:args.instances_per_template]
+                generated_questions += selected_questions
+                # Print sample questions.
+                print(f"Sample question text:")
+                for question in random.sample(selected_questions, min(NUM_SAMPLE_QUESTIONS_TO_DISPLAY, len(selected_questions))):
+                    print(f"\t: {question['question']}")
                 break
     # Add indices to all of the questions for this template.
     for question_index, question in enumerate(generated_questions):

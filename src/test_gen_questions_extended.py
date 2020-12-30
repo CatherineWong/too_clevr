@@ -13,6 +13,12 @@ def get_default_metadata():
     metadata = to_test.get_question_metadata(mock_args)
     return metadata
 
+def get_default_all_scenes():
+    mock_args = MockArgs(default_train_scenes=True,
+    default_val_scenes=False)
+    scenes_file, all_scenes, scene_info, grouped_scenes_file, grouped_scenes = to_test.get_input_scenes_and_grouped_scenes(mock_args)
+    return all_scenes
+    
 def get_default_grouped_scenes():
     mock_args = MockArgs(default_train_scenes=True,
     default_val_scenes=False)
@@ -21,6 +27,10 @@ def get_default_grouped_scenes():
 
 def get_default_localization_question_template():
     return {"text": ["Find the <Z> <C> <M> <S>."], "nodes": [{"inputs": [], "type": "scene"}, {"side_inputs": ["<Z>", "<C>", "<M>", "<S>"], "inputs": [0], "type": "filter"}], "constraints": {}, "group": "unique", "params": [{"type": "Size", "name": "<Z>"}, {"type": "Color", "name": "<C>"}, {"type": "Material", "name": "<M>"}, {"type": "Shape", "name": "<S>"}, {"type": "Relation", "name": "<R>"}, {"type": "Size", "name": "<Z2>"}, {"type": "Color", "name": "<C2>"}, {"type": "Material", "name": "<M2>"}, {"type": "Shape", "name": "<S2>"}]}
+
+def get_mock_instantiated_params():
+    return [{"type": "Size", "name": "<Z>", "value": "TEST_VALUE"}, {"type": "Color", "name": "<C>"}, {"type": "Material", "name": "<M>", "value": "TEST_VALUE"}, {"type": "Shape", "name": "<S>"}, {"type": "Relation", "name": "<R>"}, {"type": "Size", "name": "<Z2>"}, {"type": "Color", "name": "<C2>"}, {"type": "Material", "name": "<M2>"}, {"type": "Shape", "name": "<S2>"}]
+    
 
 def get_default_transformation_question_template_choose_some():
     return {"text": ["What if the <Z> <C> <M> <S> became a <Z2> <C2> <M2> <S2>?"], "nodes": [{"inputs": [], "type": "scene"}, {"side_inputs": ["<Z>", "<C>", "<M>", "<S>"], "inputs": [0], "type": "filter"}, {"side_inputs": ["<Z2>", "<C2>", "<M2>", "<S2>"], "inputs": [0, 1], "type": "transform"}], "constraints": [], "group": "unique", "params": [{"type": "Size", "name": "<Z>"}, {"type": "Color", "name": "<C>"}, {"type": "Material", "name": "<M>"}, {"type": "Shape", "name": "<S>"}, {"type": "Relation", "name": "<R>"}, {"type": "Size", "name": "<Z2>"}, {"type": "Color", "name": "<C2>"}, {"type": "Material", "name": "<M2>"}, {"type": "Shape", "name": "<S2>"}]}
@@ -140,6 +150,7 @@ def test_build_filter_option():
     filter_program, input_scenes = to_test.build_filter_option(grouped_input_scenes=grouped_input_scenes, filter_node=filter_node, constraints=template["constraints"], group=template['group'], params=template['params'], original_idx=original_idx, curr_node_idx=current_node_index, new_node_idxs=new_node_idxs)
 
     filter_options = input_scenes["filter_options"]
+    assert len(filter_options) > 0
     assert len(filter_program) == len(filter_options)
     possible_filter_types = [f"filter_{attr_type.lower()}" for (attr_type, attr_value) in filter_options]
     possible_filter_values = [attr_value for (attr_type, attr_value) in filter_options]
@@ -251,10 +262,38 @@ def test_build_other_instantiated_program_node_remove():
     # Make sure we changed the node indices
     assert new_node_idxs[original_idx] == current_node_index + len(remove_program) - 1
 
+def test_instantiate_question_text():
+    test_template = get_default_localization_question_template()
+    test_instantiated_params = get_mock_instantiated_params()
 
+    instantiated_text = to_test.instantiate_question_text(test_template, test_instantiated_params, test_template['constraints'])
+    
+    gold_text = "Find the TEST_VALUE TEST_VALUE thing."
+    assert gold_text == instantiated_text
+    
 def test_instantiate_extended_template_from_grouped_scenes_localization():
     """Test the instantiation of a template that requires localization: filtering down a set of initial objects to a set that satisfies one or more attributes."""
-    pass
+    metadata = get_default_metadata()
+    all_scenes = get_default_all_scenes()
+    grouped_scenes = get_default_grouped_scenes()
+    template = get_default_localization_question_template()
+    
+    instantiated_text, instantiated_program, input_scenes, answers, did_succeed = to_test.instantiate_extended_template_from_grouped_scenes(
+        all_scenes,
+        grouped_scenes,
+        template,
+        metadata)
+    
+    assert did_succeed 
+    assert "<" not in instantiated_text
+    assert len(input_scenes['input_image_indexes']) == len(answers)
+    
+    for node_index, node in enumerate(instantiated_program):
+        if node_index == 0:
+            assert node['type'] == 'scene'
+        else:
+            assert node['type'].startswith('filter_')
+            assert len(node['side_inputs']) == 1
 
 def test_instantiate_extended_template_from_grouped_scenes_remove():
     """Test the instantiation of a template that requires remove: filtering down a set of initial objects to a set that satisfies one or more attributes, then removing them."""

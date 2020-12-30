@@ -279,8 +279,6 @@ def instantiate_extended_template_from_grouped_scenes(
             
     # Build the program text
     instantiated_text = instantiate_question_text(template, params, template["constraints"])
-    if len(instantiated_text) < 1:
-        return [], None, None, None, did_succeed
     
     # Run the program on the scenes to generate the answers
     answers = []
@@ -346,7 +344,7 @@ def build_filter_option(grouped_input_scenes, filter_node, constraints, group, p
     filter_program = []
     for i, (attr_type, attr_value) in enumerate(filter_options):
         # Redirect these nodes to filter from each other.
-        assert len(filter_node['inputs'][0]) == 1 # Should take only one input.
+        assert len(filter_node['inputs']) == 1 # Should take only one input.
         input_idx = new_node_idxs[filter_node['inputs'][0]] if len(filter_program) == 0 else curr_node_idx + len(filter_program) - 1 # Redirect filter nodes to point to the previous node in the set 
         filter_program.append({
             "type": f"filter_{attr_type.lower()}",
@@ -458,6 +456,32 @@ def instantiate_param_random(param_name, metadata, params):
             return p['value']
     assert False # We should have found the parameter we tried to instantiate.
 
+def instantiate_question_text(template, params, constraints):
+    """
+    Returns a text question string with the original parameter variables (e.g. <S>) replaced with their grounded literal values.
+    Takes: a template containing a text question with variable names, 
+    params as a dict mapping those variable names to instantiated values,
+    constraints_dict containing parameters that must be instantiated
+    Returns: text, did_succeed flag (false if we failed to satisfy a constraint.)
+    """
+    assert len(template['text']) == 1 # The original CLEVR templates allowed synonyms.
+    
+    instantiated_text = template['text'][0]
+    # Assert that we have instantiated at least one value.
+    instantiated_params = [p for p in params if 'value' in p]
+    assert len(instantiated_params) > 0
+    for p in params:
+        if 'value' not in p:
+            if p['name'] in constraints:
+                 assert False
+            p_value = "" if p['type'] != 'Shape' else "thing"
+        else:
+            p_value = p['value']
+        instantiated_text = instantiated_text.replace(p['name'], p_value)
+    # Remove extraneous spaces
+    instantiated_text = " ".join(instantiated_text.split())
+    return instantiated_text
+
 def instantiate_templates_extended(all_input_scenes,
                                    grouped_input_scenes,
                                    template,
@@ -499,24 +523,6 @@ def instantiate_templates_extended(all_input_scenes,
         if len(final_qs) >= max_instances:
             break
     return final_qs
-
-def instantiate_question_text(template, params, constraints):
-    instantiated_texts = []
-    for template_text in template['text']:
-        instantiated_text = template_text
-        for p in params:
-            if 'value' not in p:
-                if p['name'] in constraints:
-                     # If we failed to instantiate one of the necessary values.
-                     return []
-                p_value = "" if p['type'] != 'Shape' else "thing"
-            else:
-                p_value = p['value']
-            instantiated_text = instantiated_text.replace(p['name'], p_value)
-        # Remove extraneous spaces
-        instantiated_text = " ".join(instantiated_text.split())
-        instantiated_texts.append(instantiated_text)
-    return instantiated_texts
     
 def main(args):
     set_random_seed(args)

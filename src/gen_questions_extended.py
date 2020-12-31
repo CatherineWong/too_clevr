@@ -266,6 +266,7 @@ def instantiate_extended_template_multiple_inputs(all_scenes,
     Returns {question_text : (scenes_object, programs, answers)}.
     """
     generated_text_questions = defaultdict(list)
+    buckets_to_text = defaultdict(list)
     for curr_try in range(max_tries):
         if curr_try % print_every == 0:
             print(f"For this template, currently on try: {curr_try} / {max_tries}")

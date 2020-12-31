@@ -1,2 +1,4 @@
 too-clevr-venv/
-data/
+
+data
+!data/clevr_icml* 

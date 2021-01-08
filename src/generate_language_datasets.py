@@ -115,10 +115,12 @@ def iteratively_write_out_processed_language_dataset(args, question_files_and_ou
         full_question_filepath = os.path.join(args.questions_dir, question_file)
         output_dir = question_files_and_output_dirs[question_file]
         
+        (_, _, dataset_name) = get_metadata_from_question_file(question_file, args)
+        
         print(f"Writing language dataset for {full_question_filepath}.")
         with open(full_question_filepath, 'r') as f:
             input_questions = json.load(f)["questions"]
-            processed_language, vocab = get_processed_language_and_vocab(input_questions, question_file)  
+            processed_language, vocab = get_processed_language_and_vocab(input_questions, dataset_name)  
             
             # Write out the processed langage object.
             output_filename = os.path.join(output_dir, LANGUAGE_FILENAME)

@@ -72,18 +72,19 @@ def test_create_output_dirs(tmpdir):
     question_files_and_output_dirs = to_test.create_output_dirs(mock_args, mock_question_files_and_metadata)
     
     train_dir = os.path.join(tmpdir, MOCK_DATASET_NAME, 'train')
-    val_dir = os.path.join(tmpdir, MOCK_DATASET_NAME, 'val')
+    test_dir = os.path.join(tmpdir, MOCK_DATASET_NAME, 'test')
     assert os.path.isdir(train_dir)
-    assert os.path.isdir(val_dir)
+    assert os.path.isdir(test_dir)
     
     for filename in mock_question_files_and_metadata:
         assert filename in question_files_and_output_dirs
 
 def test_get_processed_language_and_vocab():
     default_questions, default_processed = get_default_questions_and_ground_truth_processed()
-    gold_task_name = f"0_{default_questions[0]['question']}"
+    default_dataset_name = '2_test'
+    gold_task_name = f"0-{default_dataset_name}-{default_questions[0]['question']}"
     
-    processed_language, vocab = to_test.get_processed_language_and_vocab(default_questions)
+    processed_language, vocab = to_test.get_processed_language_and_vocab(default_questions, default_dataset_name)
     
     assert len(set(vocab)) == len(vocab)
     assert len(vocab) > 0
@@ -111,7 +112,8 @@ def test_integration_main(tmpdir):
     
     for question_class in get_default_question_classes_in_dir():
         for split in to_test.DATASET_SPLIT_NAMES:
-            language_file = os.path.join(tmpdir, question_class, split, to_test.LANGUAGE_FILENAME)
+            canonical_split = to_test.DATASET_SPLIT_TO_CANONICAL_SPLIT[split]
+            language_file = os.path.join(tmpdir, question_class, canonical_split, to_test.LANGUAGE_FILENAME)
             with open(language_file, 'r') as f:
                 language_data = json.load(f)
                 assert len(language_data) > 0
@@ -119,7 +121,7 @@ def test_integration_main(tmpdir):
                     assert len(task_name.split("_")) > 0
                     assert len(language_data[task_name][0].split()) > 0
             
-            vocab_file = os.path.join(tmpdir, question_class, split, to_test.VOCAB_FILENAME)
+            vocab_file = os.path.join(tmpdir, question_class, canonical_split, to_test.VOCAB_FILENAME)
             with open(vocab_file, 'r') as f:
                 vocab = json.load(f)
                 assert len(set(vocab)) == len(vocab)

@@ -35,6 +35,10 @@ DEFAULT_QUESTIONS_PREFIX = 'CLEVR'
 LANGUAGE_FILENAME = 'language.json'
 VOCAB_FILENAME = 'vocab.json'
 DATASET_SPLIT_NAMES = ['train', 'val']
+DATASET_SPLIT_TO_CANONICAL_SPLIT = {
+    'train' : 'train',
+    'val' : 'test'
+}
 
 # File handling.
 parser = argparse.ArgumentParser()
@@ -51,6 +55,11 @@ parser.add_argument('--question_files_prefix',
 parser.add_argument('--output_language_dir', required=True,
     help="Top level directory under which we will write the language files.")
 
+def to_canonical_split(split):
+    """Helper method since the 'split' names in DreamCoder are assumed differently than in CLEVR. 
+    """
+    return DATASET_SPLIT_TO_CANONICAL_SPLIT[split]
+    
 def get_metadata_from_question_file(filename, args):
     """
     Returns (filename, split, class) from '{prefix}_{split}_{class}.json'.
@@ -92,8 +101,8 @@ def create_output_dirs(args, question_files_and_metadata):
     
     for question_file in question_files_and_metadata:
         split, dataset_name = question_files_and_metadata[question_file]
-        
-        output_directory = os.path.join(args.output_language_dir, dataset_name, split)
+        canonical_split = to_canonical_split(split)
+        output_directory = os.path.join(args.output_language_dir, dataset_name, canonical_split)
         pathlib.Path(output_directory).mkdir(parents=True, exist_ok=True)
         question_files_and_output_dirs[question_file] = output_directory
     return question_files_and_output_dirs
@@ -109,7 +118,7 @@ def iteratively_write_out_processed_language_dataset(args, question_files_and_ou
         print(f"Writing language dataset for {full_question_filepath}.")
         with open(full_question_filepath, 'r') as f:
             input_questions = json.load(f)["questions"]
-            processed_language, vocab = get_processed_language_and_vocab(input_questions)  
+            processed_language, vocab = get_processed_language_and_vocab(input_questions, question_file)  
             
             # Write out the processed langage object.
             output_filename = os.path.join(output_dir, LANGUAGE_FILENAME)
@@ -123,9 +132,10 @@ def iteratively_write_out_processed_language_dataset(args, question_files_and_ou
             with open(output_filename, 'w') as f:
                 json.dump(vocab, f)     
             
-def get_processed_language_and_vocab(input_questions):
+def get_processed_language_and_vocab(input_questions, question_file):
     """
     Generates the processed_language and vocab objects from the original set of CLEVR questions.
+    task names are of the form: {INDEX}-{DATASET_NAME}-{QUESTION_TEXT}    
     Returns:
         processed_language:  { task_name :  [processed_text]}
         vocab = [vocabulary_tokens]
@@ -134,7 +144,8 @@ def get_processed_language_and_vocab(input_questions):
     vocab = set()
     for question_object in input_questions:
         question_text = question_object['question'] if type(question_object['question']) is str else question_object['question'][0]
-        task_name = f"{question_object['question_index']}_{question_text}"
+    
+        task_name = f"{question_object['question_index']}-{question_file}-{question_text}"
         processed = process_question_text(question_text)
         vocab.update(processed.split())
         processed_language[task_name] = [processed]

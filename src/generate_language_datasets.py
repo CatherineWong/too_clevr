@@ -19,7 +19,7 @@ Each language file is a dictionary in the form:
 Example usage: python3 generate_language_datasets.py --questions_dir clevr_dreams/questions
     --question_classes_to_generate all
     --question_files_prefix CLEVR
-    --output_language_dir clevr_dreams/language
+    --output_language_dir clevr_dreams/synthetic/language
 """
 
 import argparse, json, os, itertools, random, shutil

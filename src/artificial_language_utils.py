@@ -11,6 +11,18 @@ LESS_THAN_TOKEN = " LESS_THAN "
 GREATER_THAN_TOKEN = " GREATER_THAN "
 OR_TOKEN = " OR "
 
+GET_MATERIAL_TOKEN = " GET_MATERIAL "
+GET_SHAPE_TOKEN = " GET_SHAPE "
+GET_SIZE_TOKEN = " GET_SIZE "
+GET_COLOR_TOKEN = " GET_COLOR "
+
+RIGHT_TOKEN = " RIGHT_OF "
+LEFT_TOKEN = " LEFT_OF "
+FRONT_TOKEN = " FRONT_OF "
+BEHIND_TOKEN = " BEHIND_OF "
+
+SAME_TOKEN = " SAME "
+
 def pad_text(text):
     return f" {text} "
 
@@ -123,3 +135,115 @@ def translate_single_or_text(text):
     text = text.replace(what_number, COMMA_TOKEN + COUNT_TOKEN)
     text = translate_constants(text)
     return remove_extraneous_spaces(text)
+
+def translate_and_remove_count_queries(text):
+    how_many = "how many"
+    what_number = "what number of"
+    if how_many in text or what_number in text:
+        text = text.replace("are there", "")
+        text = text.replace(how_many, COUNT_TOKEN)
+        text = text.replace(what_number, COUNT_TOKEN)
+    return text
+
+def translate_and_remove_material_queries(text):
+    made_of = "made of"
+    material = "material of the"
+    if not(made_of in text or material in text):
+        return text
+    # Counterintuitive, but always places the query in the front of the filters.
+    text = text.replace(made_of, "")
+    text = text.replace(material, "")
+    text = text.replace("what is the", GET_MATERIAL_TOKEN)
+    return text
+
+def translate_and_remove_shape_queries(text):
+    shape_prefix = "what is the shape of the "
+    shape_postfix = "what shape is it" 
+    shape_postfix_long = "has what shape"
+    if shape_prefix in text:
+        text = text.replace(shape_prefix, GET_SHAPE_TOKEN)
+    elif shape_postfix in text or shape_postfix_long in text:
+        text = text.replace(shape_postfix, "")
+        text = text.replace(shape_postfix_long, "")
+        text = text.replace("there is a", "")
+        text = text.replace("the", "")
+        text = GET_SHAPE_TOKEN + text
+    return text
+
+def translate_and_remove_color_queries(text):
+    color_prefix = "what color is the"
+    color_postfix = "is what color"
+    if color_prefix in text:
+        text = text.replace(color_prefix, GET_COLOR_TOKEN)
+    elif color_postfix in text:
+        text = text.replace("the", "")
+        text = text.replace(color_postfix, "")
+        text = GET_COLOR_TOKEN + text
+    return text
+
+def translate_and_remove_size_queries(text):
+    size_prefix = "how big is the"
+    size_prefix_long = 'what size is the'
+    size_postfix = "is what size"
+    size_postfix_long = "what is its size"
+    if size_prefix in text or size_prefix_long in text:
+        text = text.replace(size_prefix, GET_SIZE_TOKEN)
+        text = text.replace(size_prefix_long, GET_SIZE_TOKEN)
+    elif size_postfix in text or size_postfix_long in text:
+        text = text.replace("there is a", "")
+        text = text.replace("the", "")
+        text = text.replace(size_postfix, "")
+        text = text.replace(size_postfix_long, "")
+        text = GET_SIZE_TOKEN + text
+    return text
+
+def translate_and_remove_relation_queries(text):
+    for relation in ["behind", "left", "front", "right"]:
+        for context in ["that is {} the", "that are {} the", "are {} the", "is {} the", "{} the"]:
+            relation_context = context.format(relation)
+            if relation_context in text:
+                text = text.replace(relation_context, f"{relation.upper()}_OF ")
+    return text
+
+def translate_zero_hop_text(text):
+    # There are two forms for each question.
+    text = pad_text(text)
+    # Count questions.
+    text = translate_and_remove_count_queries(text)
+    text = translate_and_remove_shape_queries(text)
+    text = translate_and_remove_material_queries(text)
+    text = translate_and_remove_size_queries(text)
+    text = translate_and_remove_color_queries(text)
+    text = translate_constants(text)
+    return remove_extraneous_spaces(text)
+    
+def translate_one_hop_text(text):
+    # There are two forms for each question.
+    text = pad_text(text)
+    text = translate_and_remove_relation_queries(text)
+    return translate_zero_hop_text(text) 
+
+def translate_same_relate_restricted_text(text):
+    text = pad_text(text)
+    # Break the text around the word "same"
+    split_on_same = text.split(" same ")
+    assert len(split_on_same) == 2
+    same_query = split_on_same[1]
+    same_query = "_" + same_query
+    for attribute in ["_color", "_size", "_shape", "_material"]:
+        same_query = same_query.replace(attribute, f" GET{attribute.upper()} SAME ")
+    text = same_query + split_on_same[0]
+    
+    for count in ["how many", "what number"]:
+        text = text.replace(count, COMMA_TOKEN + COUNT_TOKEN)
+    for get_shape in ["shape"]:
+        text = text.replace(get_shape, COMMA_TOKEN +  GET_SHAPE_TOKEN)
+    
+    text = text.replace("made of the", "")
+    for get_material in ["material", "made of"]:
+        text = text.replace(get_material,COMMA_TOKEN +  GET_MATERIAL_TOKEN)
+    
+    text = translate_constants(text)
+    text = " ".join([token for token in text.split() if token.isupper() or token == ","])
+    return remove_extraneous_spaces(text)
+    

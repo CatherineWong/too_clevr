@@ -1,5 +1,6 @@
 """
 test_artificial_language_utils.py | Author: Catherine Wong
+Usage: 
 """
 import artificial_language_utils as to_test
 
@@ -48,7 +49,7 @@ def test_translate_compare_integer():
     
     translate_and_assert_match(input_to_gold, to_test.translate_compare_integer_text)
     
-def test_translate_compare_integer():
+def test_translate_single_or():
     input_to_gold = {
         "how many objects are either large metal sphere s or large rubber thing s" : "LARGE METAL SPHERE OR LARGE RUBBER , COUNT",
         "what number of metal objects are small sphere s or purple thing s" : "SMALL SPHERE OR PURPLE , COUNT METAL",
@@ -57,3 +58,64 @@ def test_translate_compare_integer():
     }
     
     translate_and_assert_match(input_to_gold, to_test.translate_single_or_text)
+
+def test_translate_zero_hop():
+    input_to_gold = {
+        "what number of large thing s are there" : "COUNT LARGE",
+        "how many rubber cylinder s are there" : "COUNT RUBBER CYLINDER",
+        "there is a yellow thing what shape is it" : "GET_SHAPE YELLOW",
+        "what is the shape of the small yellow thing" : "GET_SHAPE SMALL YELLOW",
+        "what is the small blue cube made of" : "GET_MATERIAL SMALL BLUE CUBE",
+        "what is the material of the gray sphere" : "GET_MATERIAL GRAY SPHERE",
+        "what color is the metal cylinder" : "GET_COLOR METAL CYLINDER",
+        "the small metal sphere is what color" : "GET_COLOR SMALL METAL SPHERE",
+        "the metal sphere is what size" : "GET_SIZE METAL SPHERE",
+        "how big is the purple thing" : "GET_SIZE PURPLE"
+    }
+    translate_and_assert_match(input_to_gold, to_test.translate_zero_hop_text)
+
+def test_translate_one_hop():
+    input_to_gold = {
+        "what number of metal cube s are behind the rubber cylinder" : "COUNT METAL CUBE BEHIND_OF RUBBER CYLINDER",
+        "how many metal thing s are behind the rubber cylinder" : "COUNT METAL BEHIND_OF RUBBER CYLINDER",
+        "there is a cylinder front the small blue rubber cylinder what is its size" : "GET_SIZE CYLINDER FRONT_OF SMALL BLUE RUBBER CYLINDER",
+        "what size is the rubber thing that is right the purple thing" : "GET_SIZE RUBBER RIGHT_OF PURPLE",
+        "what color is the thing that is behind the sphere" : "GET_COLOR BEHIND_OF SPHERE",
+        "the small metal thing that is right the small metal sphere is what color" : "GET_COLOR SMALL METAL RIGHT_OF SMALL METAL SPHERE",
+        
+        "what is the material of the large thing right the large purple metal thing" : "GET_MATERIAL LARGE RIGHT_OF LARGE PURPLE METAL",
+        "what is the small cylinder front the small brown cylinder made of" : "GET_MATERIAL SMALL CYLINDER FRONT_OF SMALL BROWN CYLINDER", 
+        
+        "the small metal thing right the small metal sphere has what shape" : "GET_SHAPE SMALL METAL RIGHT_OF SMALL METAL SPHERE",
+        "what is the shape of the large rubber thing that is left the small red metal thing" : "GET_SHAPE LARGE RUBBER LEFT_OF SMALL RED METAL",
+    }
+    
+    translate_and_assert_match(input_to_gold, to_test.translate_one_hop_text)
+
+def test_translate_same_related_restricted():
+    input_to_gold = {
+        "how many other thing s are there of the same size as the cyan thing" : "GET_SIZE SAME CYAN , COUNT",
+        "what number of other thing s are there of the same size as the metal sphere" : "GET_SIZE SAME METAL SPHERE , COUNT",
+        
+        "what number of other objects are the same color as the small cylinder" : "GET_COLOR SAME SMALL CYLINDER , COUNT",
+        "what number of other objects are there of the same color as the metal sphere" : "GET_COLOR SAME METAL SPHERE , COUNT",
+        "what number of other objects are there of the same color as the metal sphere" : "GET_COLOR SAME METAL SPHERE , COUNT",
+        
+        "what number of large cube s have the same material as the cylinder" : "GET_MATERIAL SAME CYLINDER , COUNT LARGE CUBE",
+        "what number of thing s are made of the same material as the cyan sphere" : "GET_MATERIAL SAME CYAN SPHERE , COUNT",
+        "how many other blue thing s have the same material as the large blue thing" : "GET_MATERIAL SAME LARGE BLUE , COUNT BLUE",
+        
+        "what number of large metal thing s have the same shape as the small red metal thing" : "GET_SHAPE SAME SMALL RED METAL , COUNT LARGE METAL",
+        "how many metal thing s have the same shape as the green rubber thing" : "GET_SHAPE SAME GREEN RUBBER , COUNT METAL",
+        "how many other rubber thing s are the same shape as the small yellow thing" : "GET_SHAPE SAME SMALL YELLOW , COUNT RUBBER",
+        
+        "the green metal thing that is the same size as the rubber cylinder is what shape" : "GET_SIZE SAME RUBBER CYLINDER , GET_SHAPE GREEN METAL",
+        "what shape is the brown thing that is the same size as the gray rubber thing" : "GET_SIZE SAME GRAY RUBBER , GET_SHAPE BROWN",
+        
+        "what is the material of the small cylinder that is the same color as the metal cube" : "GET_COLOR SAME METAL CUBE , GET_MATERIAL SMALL CYLINDER",
+        "there is another thing that is the same color as the large rubber thing what is it made of" : "GET_COLOR SAME LARGE RUBBER , GET_MATERIAL",
+        "there is a thing that is the same color as the small cylinder what material is it" : "GET_COLOR SAME SMALL CYLINDER , GET_MATERIAL"
+    }
+    
+    translate_and_assert_match(input_to_gold, to_test.translate_same_relate_restricted_text)
+

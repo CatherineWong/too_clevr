@@ -139,6 +139,7 @@ def translate_single_or_text(text):
 def translate_and_remove_count_queries(text):
     how_many = "how many"
     what_number = "what number of"
+    text = remove_extraneous_spaces(text)
     if how_many in text or what_number in text:
         text = text.replace("are there", "")
         text = text.replace(how_many, COUNT_TOKEN)
@@ -157,17 +158,17 @@ def translate_and_remove_material_queries(text):
     text = text.replace(material_short, "")
     text = remove_extraneous_spaces(text)
     text = text.replace("what is the", GET_MATERIAL_TOKEN)
+    text = text.replace("what is", GET_MATERIAL_TOKEN)
     return text
 
 def translate_and_remove_shape_queries(text):
-    shape_prefix = "what shape is the "
-    shape_prefix_long = "what is the shape of the "
     shape_postfix = "what shape is it" 
     shape_postfix_long = "has what shape"
-    if shape_prefix in text or shape_prefix_long in text:
-        text = text.replace(shape_prefix_long, GET_SHAPE_TOKEN)
-        text = text.replace(shape_prefix, GET_SHAPE_TOKEN)
-    elif shape_postfix in text or shape_postfix_long in text:
+    for shape_prefix in ["what is the shape of the ", "what shape is the", "what shape is", "what is shape"]:
+        if shape_prefix in text:  
+            text = text.replace(shape_prefix, GET_SHAPE_TOKEN)
+            return text
+    if shape_postfix in text or shape_postfix_long in text:
         text = text.replace(shape_postfix, "")
         text = text.replace(shape_postfix_long, "")
         text = text.replace("there is a", "")
@@ -193,16 +194,21 @@ def translate_and_remove_color_queries(text):
 
 def translate_and_remove_size_queries(text):
     size_prefix = "how big is the"
+    size_prefix_short = "how big is"
+    size_prefix_short_2 = "what size is"
+    size_prefix_short_3 = "what is size"
     size_prefix_long = 'what size is the'
     size_prefix_long_2 = "what is the size of the"
     size_postfix = "is what size"
     size_postfix_2 = "has what size"
     size_postfix_long = "what is its size"
-    if size_prefix in text or size_prefix_long in text or size_prefix_long_2 in text:
+    if size_prefix in text or size_prefix_long in text or size_prefix_long_2 in text or size_prefix_short in text or size_prefix_short_2 in text or size_prefix_short_3 in text:
         text = text.replace(size_prefix_long_2, GET_SIZE_TOKEN)
         text = text.replace(size_prefix_long, GET_SIZE_TOKEN)
         text = text.replace(size_prefix, GET_SIZE_TOKEN)
-        
+        text = text.replace(size_prefix_short, GET_SIZE_TOKEN)
+        text = text.replace(size_prefix_short_2, GET_SIZE_TOKEN)
+        text = text.replace(size_prefix_short_3, GET_SIZE_TOKEN)
     elif size_postfix in text or size_postfix_long in text or size_postfix_2 in text:
         text = text.replace("there is a", "")
         text = text.replace("the", "")
@@ -212,9 +218,25 @@ def translate_and_remove_size_queries(text):
         text = GET_SIZE_TOKEN + text
     return text
 
+def rearrange_and_remove_anaphora(text):
+    if ("what is its ") in text:
+        text = text + " it "
+        text = text.replace("its", "")
+    anaphora = "it "
+    if text.endswith("it "):
+        if text.startswith(" there is a"):
+            text = text[:-(len(anaphora))]
+            question_word = "what" if "what" in text else "how"
+            split_text = text.split(question_word)
+            assert len(split_text) == 2
+            prefix = split_text[0]
+            prefix = prefix.replace("there is a", "")
+            text = question_word + " " + split_text[1] + " " + prefix
+    return text
+
 def translate_and_remove_relation_queries(text):
     for relation in ["behind", "left", "front", "right"]:
-        for context in ["that is {} the", "that are {} the", "are {} the", "is {} the", "{} the"]:
+        for context in ["that is {} the", "that are {} the", "are {} the", "is {} the", "are {}", "{} the"]:
             relation_context = context.format(relation)
             if relation_context in text:
                 text = text.replace(relation_context, f"{relation.upper()}_OF ")
@@ -235,6 +257,7 @@ def translate_zero_hop_text(text):
 def translate_one_hop_text(text):
     # There are two forms for each question.
     text = pad_text(text)
+    text = rearrange_and_remove_anaphora(text)
     text = translate_and_remove_relation_queries(text)
     return translate_zero_hop_text(text) 
 

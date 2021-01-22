@@ -13,15 +13,27 @@ Each language file it outputs is a dictionary in the form
 Example usage: python3 gen_artificial_language.py
     --language_dir clevr_icml_2021/synthetic/language
     --question_classes_to_generate all
-    --output_language_dir clevr_dreams/artificial/language
+    --output_language_dir clevr_icml_2021/artificial/language
 """
-import argparse, json, os
+import argparse, json, os, sys
 import pathlib
+import artificial_language_utils 
 
 GENERATE_ALL_FLAG = 'all'
 DATASET_SPLIT_NAMES = ['train', 'test']
 LANGUAGE_FILENAME = 'language.json'
 VOCAB_FILENAME = 'vocab.json'
+
+TRANSLATION_FN_REGISTRY = {
+    "2_localization" :  artificial_language_utils.translate_localization_text,
+    "2_remove" : artificial_language_utils.translate_remove_text, 
+    "2_transform" : artificial_language_utils.translate_transform_text,
+    "1_compare_integer" : artificial_language_utils.translate_compare_integer_text,
+    "1_single_or" : artificial_language_utils.translate_single_or_text,
+    "1_zero_hop" : artificial_language_utils.translate_zero_hop_text,
+    "1_one_hop" : artificial_language_utils.translate_one_hop_text,
+    "1_same_relate_restricted" : artificial_language_utils.translate_same_relate_restricted_text,
+}
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--language_dir', required=True,
@@ -90,7 +102,7 @@ def iteratively_write_out_artificial_language_dataset(args, synthetic_language_a
         
         with open(language_file, 'r') as f:
             synthetic_language_dataset = json.load(f)
-            artificial_language, vocab = get_artificial_language_and_vocab(synthetic_language_dataset)
+            artificial_language, vocab = get_artificial_language_and_vocab(synthetic_language_dataset, dataset_name)
             
             # Write out the artificial language object.
             output_filename = os.path.join(output_dir, LANGUAGE_FILENAME)
@@ -102,7 +114,7 @@ def iteratively_write_out_artificial_language_dataset(args, synthetic_language_a
             output_filename= os.path.join(output_dir, VOCAB_FILENAME)
             print(f"Writing vocab of [{len(vocab)}] words to {output_filename}")
             with open(output_filename, 'w') as f:
-            json.dump(vocab, f)   
+                json.dump(vocab, f)   
 
 def get_artificial_language_and_vocab(synthetic_language_dataset, dataset_name):
     """
@@ -112,12 +124,11 @@ def get_artificial_language_and_vocab(synthetic_language_dataset, dataset_name):
         artificial_language : {task_name : [artificial_test]}
         vocab = [vocabulary_tokens]
     """  
-    
     artificial_language = {}
     vocab = set()
-    for task_name in input_questions:
-        synthetic_text = input_questions[task_name]
-        artificial = translate_synthetic_to_artificial_language(question_text)
+    for task_name in synthetic_language_dataset:
+        synthetic_text = synthetic_language_dataset[task_name][0]
+        artificial = translate_synthetic_to_artificial_language(synthetic_text, dataset_name)
         vocab.update(artificial.split())
         artificial_language[task_name] = [artificial]
     vocab = list(vocab)
@@ -128,13 +139,20 @@ def translate_synthetic_to_artificial_language(synthetic_language_text, dataset_
     'Translates' the synthetic language to a set of artificial language tokens.
     Uses a 'translation' file of ordered replacement tokens.
     """
-    #TODO make a cached translation file loader that gets cached if not already here
-    #TODO we also need to translate the output text, unless we can do that globally.
+    translation_fn = TRANSLATION_FN_REGISTRY[dataset_name]
+    translation = translation_fn(synthetic_language_text)
+    for token in translation.split():
+        if token.islower():
+            print(f"Errror for dataset: {dataset_name}")
+            print(f"Error translating: {synthetic_language_text} -> {translation}")
+            sys.exit(0)
+    return translation
+        
     
 def main(args):
-    synthetic_language_datasets =  get_synthetic_language_datasets(args)
-    pass
-
+    synthetic_language_datasets =  get_synthetic_language_datasets_and_metadata(args)
+    language_files_and_output_dirs = create_output_dirs(args, synthetic_language_datasets)
+    iteratively_write_out_artificial_language_dataset(args, language_files_and_output_dirs)
 if __name__ == '__main__':
   args = parser.parse_args()
   main(args)  

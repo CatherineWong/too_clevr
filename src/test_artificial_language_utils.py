@@ -15,6 +15,8 @@ def test_translate_localization():
         "find the small rubber cube" : "SMALL RUBBER CUBE",
         "find the cyan thing s": "CYAN",
         "find the cube s": "CUBE",
+        'find the sphere s' : "SPHERE",
+        'find the large thing s' : "LARGE"
     }
     translate_and_assert_match(input_to_gold, to_test.translate_localization_text)
 
@@ -67,7 +69,9 @@ def test_translate_zero_hop():
         "what is the shape of the small yellow thing" : "GET_SHAPE SMALL YELLOW",
         "what is the small blue cube made of" : "GET_MATERIAL SMALL BLUE CUBE",
         "what is the material of the gray sphere" : "GET_MATERIAL GRAY SPHERE",
+        "what material is the gray thing" : "GET_MATERIAL GRAY",
         "what color is the metal cylinder" : "GET_COLOR METAL CYLINDER",
+        "what is the color of the rubber cube" : "GET_COLOR RUBBER CUBE"
         "the small metal sphere is what color" : "GET_COLOR SMALL METAL SPHERE",
         "the metal sphere is what size" : "GET_SIZE METAL SPHERE",
         "how big is the purple thing" : "GET_SIZE PURPLE"
@@ -77,6 +81,7 @@ def test_translate_zero_hop():
 def test_translate_one_hop():
     input_to_gold = {
         "what number of metal cube s are behind the rubber cylinder" : "COUNT METAL CUBE BEHIND_OF RUBBER CYLINDER",
+        "there is a small purple rubber thing what number of rubber cylinder s are right it" : "COUNT RUBBER CYLINDER RIGHT_OF SMALL PURPLE RUBBER",
         "how many metal thing s are behind the rubber cylinder" : "COUNT METAL BEHIND_OF RUBBER CYLINDER",
         "there is a cylinder front the small blue rubber cylinder what is its size" : "GET_SIZE CYLINDER FRONT_OF SMALL BLUE RUBBER CYLINDER",
         "what size is the rubber thing that is right the purple thing" : "GET_SIZE RUBBER RIGHT_OF PURPLE",

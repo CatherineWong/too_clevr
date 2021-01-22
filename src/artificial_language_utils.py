@@ -148,19 +148,24 @@ def translate_and_remove_count_queries(text):
 def translate_and_remove_material_queries(text):
     made_of = "made of"
     material = "material of the"
-    if not(made_of in text or material in text):
+    material_short = "material"
+    if not(made_of in text or material in text or material_short in text):
         return text
     # Counterintuitive, but always places the query in the front of the filters.
     text = text.replace(made_of, "")
     text = text.replace(material, "")
+    text = text.replace(material_short, "")
+    text = remove_extraneous_spaces(text)
     text = text.replace("what is the", GET_MATERIAL_TOKEN)
     return text
 
 def translate_and_remove_shape_queries(text):
-    shape_prefix = "what is the shape of the "
+    shape_prefix = "what shape is the "
+    shape_prefix_long = "what is the shape of the "
     shape_postfix = "what shape is it" 
     shape_postfix_long = "has what shape"
-    if shape_prefix in text:
+    if shape_prefix in text or shape_prefix_long in text:
+        text = text.replace(shape_prefix_long, GET_SHAPE_TOKEN)
         text = text.replace(shape_prefix, GET_SHAPE_TOKEN)
     elif shape_postfix in text or shape_postfix_long in text:
         text = text.replace(shape_postfix, "")
@@ -172,27 +177,37 @@ def translate_and_remove_shape_queries(text):
 
 def translate_and_remove_color_queries(text):
     color_prefix = "what color is the"
+    color_prefix_long = 'what is the color of the'
     color_postfix = "is what color"
-    if color_prefix in text:
+    color_postfix_2 = "has what color"
+    
+    if color_prefix in text or color_prefix_long in text:
+        text = text.replace(color_prefix_long, GET_COLOR_TOKEN)
         text = text.replace(color_prefix, GET_COLOR_TOKEN)
-    elif color_postfix in text:
+    elif color_postfix in text or color_postfix_2 in text:
         text = text.replace("the", "")
         text = text.replace(color_postfix, "")
+        text = text.replace(color_postfix_2, "")
         text = GET_COLOR_TOKEN + text
     return text
 
 def translate_and_remove_size_queries(text):
     size_prefix = "how big is the"
     size_prefix_long = 'what size is the'
+    size_prefix_long_2 = "what is the size of the"
     size_postfix = "is what size"
+    size_postfix_2 = "has what size"
     size_postfix_long = "what is its size"
-    if size_prefix in text or size_prefix_long in text:
-        text = text.replace(size_prefix, GET_SIZE_TOKEN)
+    if size_prefix in text or size_prefix_long in text or size_prefix_long_2 in text:
+        text = text.replace(size_prefix_long_2, GET_SIZE_TOKEN)
         text = text.replace(size_prefix_long, GET_SIZE_TOKEN)
-    elif size_postfix in text or size_postfix_long in text:
+        text = text.replace(size_prefix, GET_SIZE_TOKEN)
+        
+    elif size_postfix in text or size_postfix_long in text or size_postfix_2 in text:
         text = text.replace("there is a", "")
         text = text.replace("the", "")
         text = text.replace(size_postfix, "")
+        text = text.replace(size_postfix_2, "")
         text = text.replace(size_postfix_long, "")
         text = GET_SIZE_TOKEN + text
     return text

@@ -169,3 +169,4 @@ def add_material(name, **properties):
       group_node.outputs['Shader'],
       output_node.inputs['Surface'],
   )
+

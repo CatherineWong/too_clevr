@@ -1,14 +1,22 @@
 """
-Renders individual 'answer' output scenes using Blender, given a scene specification. This file expects to be run from Blender like this:
-blender --background --python render_answers.py -- [arguments to this script].
+render_answers.py | Author : Catherine Wong
+This outputs the output scenes for questions that require scene transformations, given a symbolic scene specification.
 
-Uses Blendr data files from the clevr-dataset-gen repo.
+It expects a Blender material files from the original clever-dataset-gen repo.
+It also expects a set of question files.
+
+Example usage:
+    blender --background --python render_answers.py --
+        --question_templates 2_localization
+        --splits train val
+        --num_questions_per_template -1 # For all scenes
 """
 
 from __future__ import print_function
 import math, sys, random, argparse, json, os, tempfile
 from datetime import datetime as dt
 from collections import Counter, defaultdict
+import pathlib
 
 INSIDE_BLENDER = True
 try:
@@ -29,47 +37,60 @@ if INSIDE_BLENDER:
     print("$VERSION is your Blender version (such as 2.78).")
     sys.exit(1)
 
+DATASET_SPLIT_NAMES = ['train', 'val']
+DEFAULT_CLEVR_PREFIX = 'CLEVR'
+SPLIT_TAG = "split"
+QUESTION_CLASS_TAG = "question_class"
+QUESTIONS_TO_RENDER_TAG = 'questions_to_render'
+OUTPUT_DIR_TAG = 'output_dir'
+ANSWER_IMAGE_FILENAME_TEMPLATE_TAG  = 'answer_image_filename'
+INPUT_IMAGE_FILENAME_TEMPLATE_TAG  = 'input_image_filename'
+OUTPUT_IMAGE_DICT_FILENAME = "output_images.json"
 
+DEFAULT_IMAGE_DATA_DIR = "/Users/catwong/Desktop/zyzzyva/code/too_clevr/metadata/clevr_shared_metadata/image_generation_data"
+DEFAULT_BLEND_FILE = "base_scene.blend"
+DEFAULT_PROPERTIES_FILE = "properties.json"
+DEFAULT_SHAPE_FILES_DIR = "shapes"
+DEFAULT_MATERIALS_FILE_DIR = 'materials'
+
+DEFAULT_TOP_LEVEL_CLEVER_DATA_DIR = "/Users/catwong/Desktop/zyzzyva/code/too_clevr/data/"
+DEFAULT_DATASET_DIR = "clevr_icml_2021"
+DEFAULT_QUESTIONS_DIR = "questions"
+DEFAULT_IMAGE_OUTPUT_DIR = "images"
 parser = argparse.ArgumentParser()
 
+# Scene file and output settings
+parser.add_argument('--question_templates', 
+                    nargs='*',
+                    help='Which question templates to generate for.')
+parser.add_argument('--splits', 
+                    nargs='*',
+                    help='Which splits to generate for.')
+parser.add_argument("--num_scenes_per_question", default=3, type=int,
+                    help="The maximum number of scenes we render per question..")
+parser.add_argument("--num_questions_per_template", default=1, type=int,
+                    help="The number of questions to render answer scene images for. If -1, we render all of the questions for a given template.")
+parser.add_argument("--render_inputs", default=1, type=int,
+                    help="Also re-render the inputs. [Not yet implemented]")
+
+# Scene storage settings.   
+parser.add_argument('--input_questions_dir', default=os.path.join(DEFAULT_TOP_LEVEL_CLEVER_DATA_DIR, DEFAULT_DATASET_DIR, DEFAULT_QUESTIONS_DIR),
+    help="The base directory containing question files to render images for.")
+parser.add_argument('--output_image_dir', default=os.path.join(DEFAULT_TOP_LEVEL_CLEVER_DATA_DIR, DEFAULT_DATASET_DIR, DEFAULT_IMAGE_OUTPUT_DIR),
+    help="The base directory where output images will be stored. It will be " +
+         "created if it does not exist.")
+         
 # Input BLENDR options
-parser.add_argument('--base_scene_blendfile', default='/Users/catwong/Desktop/zyzzyva/code/too_clevr/data_gen/clevr-dataset-gen/image_generation/data/base_scene.blend',
-    help="Base blender file on which all scenes are based; includes " +
-          "ground plane, lights, and camera.")
-parser.add_argument('--properties_json', default='/Users/catwong/Desktop/zyzzyva/code/too_clevr/data_gen/clevr-dataset-gen/image_generation/data/properties.json',
-    help="JSON file defining objects, materials, sizes, and colors. " +
-         "The \"colors\" field maps from CLEVR color names to RGB values; " +
-         "The \"sizes\" field maps from CLEVR size names to scalars used to " +
-         "rescale object models; the \"materials\" and \"shapes\" fields map " +
-         "from CLEVR material and shape names to .blend files in the " +
-         "--object_material_dir and --shape_dir directories respectively.")
-parser.add_argument('--shape_dir', default='/Users/catwong/Desktop/zyzzyva/code/too_clevr/data_gen/clevr-dataset-gen/image_generation/data/shapes',
-    help="Directory where .blend files for object models are stored")
-parser.add_argument('--material_dir', default='/Users/catwong/Desktop/zyzzyva/code/too_clevr/data_gen/clevr-dataset-gen/image_generation/data/materials',
-    help="Directory where .blend files for materials are stored")
+parser.add_argument('--base_scene_blendfile', default=os.path.join(DEFAULT_IMAGE_DATA_DIR, DEFAULT_BLEND_FILE), help="Base blender file on which all scenes are based; includes ground plane, lights, and camera.")
+parser.add_argument('--properties_json', default=os.path.join(DEFAULT_IMAGE_DATA_DIR, DEFAULT_PROPERTIES_FILE), help="JSON file defining objects, materials, sizes, and colors. ")
+parser.add_argument('--shape_dir', default=os.path.join(DEFAULT_IMAGE_DATA_DIR, DEFAULT_SHAPE_FILES_DIR), help="Directory where .blend files for object models are stored")
+parser.add_argument('--material_dir', default=os.path.join(DEFAULT_IMAGE_DATA_DIR, DEFAULT_MATERIALS_FILE_DIR), help="Directory where .blend files for materials are stored")
 parser.add_argument('--shape_color_combos_json', default=None,
     help="Optional path to a JSON file mapping shape names to a list of " +
          "allowed color names for that shape. This allows rendering images " +
          "for CLEVR-CoGenT.")
-
-# Scene file and output settings
-parser.add_argument("--num_questions_per_template", default=1, type=int,
-                    help="The number of questions to render answer scene images for.")
-parser.add_argument("--render_inputs", default=1, type=int,
-                    help="Also renders inputs.")
-                    
-parser.add_argument('--input_questions_dir', default='/Users/catwong/Desktop/zyzzyva/code/too_clevr/data/clevr_dreams/questions',
-    help="The base directory containing question files to render images for.")
-parser.add_argument('--input_questions_file', default='CLEVR_val_2_transform',
-    help="The base directory containing question files to render images for.")
-parser.add_argument('--output_image_dir', default='/Users/catwong/Desktop/zyzzyva/code/too_clevr/data/clevr_dreams/images',
-    help="The base directory where output images will be stored. It will be " +
-         "created if it does not exist.")
-parser.add_argument('--save_blendfiles', type=int, default=0,
-    help="Setting --save_blendfiles 1 will cause the blender scene file for " +
-         "each generated image to be stored in the directory specified by " +
-         "the --output_blend_dir flag. These files are not saved by default " +
-         "because they take up ~5-10MB each.")
+parser.add_argument('--save_blendfiles', type=int, default=0, help="Setting --save_blendfiles 1 will cause the blender scene file for each generated image to be stored in the directory specified by " +
+"the --output_blend_dir flag. These files are not saved by default because they take up ~5-10MB each.")
 
 # Rendering options
 parser.add_argument('--use_gpu', default=0, type=int,
@@ -105,8 +126,7 @@ def render_scene(args,
                 scene,
                 question_index,
                 answer_index,
-                output_img,
-                output_blendfile=None):
+                output_img):
     # Load the main blendfile
     bpy.ops.wm.open_mainfile(filepath=args.base_scene_blendfile)
 
@@ -144,22 +164,57 @@ def render_scene(args,
     bpy.context.scene.cycles.transparent_max_bounces = args.render_max_bounces
     if args.use_gpu == 1:
       bpy.context.scene.cycles.device = 'GPU'
+
+    ### Old inherited plane code.
+    # This will give ground-truth information about the scene and its objects
+    # Put a plane on the ground so we can compute cardinal directions
+    bpy.ops.mesh.primitive_plane_add(radius=5)
+    plane = bpy.context.object
+
+    def rand(L):
+      return 2.0 * L * (random.random() - 0.5)
+
+    # Add random jitter to camera position
+    if args.camera_jitter > 0:
+      for i in range(3):
+        bpy.data.objects['Camera'].location[i] += rand(args.camera_jitter)
+
+    # Figure out the left, up, and behind directions along the plane and record
+    # them in the scene structure
+    camera = bpy.data.objects['Camera']
+    plane_normal = plane.data.vertices[0].normal
+    cam_behind = camera.matrix_world.to_quaternion() * Vector((0, 0, -1))
+    cam_left = camera.matrix_world.to_quaternion() * Vector((-1, 0, 0))
+    cam_up = camera.matrix_world.to_quaternion() * Vector((0, 1, 0))
+    plane_behind = (cam_behind - cam_behind.project(plane_normal)).normalized()
+    plane_left = (cam_left - cam_left.project(plane_normal)).normalized()
+    plane_up = cam_up.project(plane_normal).normalized()
+
+    # Delete the plane; we only used it for normals anyway. The base scene file
+    # contains the actual ground plane.
+    utils.delete_object(plane)
+    ####
     
-    # Set the camera -- for now, we will just ignore the camera. 
-     
-    # Add the objects.
-    add_objects(scene['objects'])
+    objects, blender_objects = add_objects(scene['objects'])
     
-    # Render the scene
+    # Add random jitter to lamp positions
+    if args.key_light_jitter > 0:
+      for i in range(3):
+        bpy.data.objects['Lamp_Key'].location[i] += rand(args.key_light_jitter)
+    if args.back_light_jitter > 0:
+      for i in range(3):
+        bpy.data.objects['Lamp_Back'].location[i] += rand(args.back_light_jitter)
+    if args.fill_light_jitter > 0:
+      for i in range(3):
+        bpy.data.objects['Lamp_Fill'].location[i] += rand(args.fill_light_jitter)
+    
+    # Render the scene and dump the scene data structure
     while True:
       try:
         bpy.ops.render.render(write_still=True)
         break
       except Exception as e:
         print(e)
-
-    if output_blendfile is not None:
-      bpy.ops.wm.save_as_mainfile(filepath=output_blendfile)
 
 def add_objects(objects):
     # Load the property file
@@ -172,97 +227,159 @@ def add_objects(objects):
       material_mapping = [(v, k) for k, v in properties['materials'].items()]
       object_mapping = [(v, k) for k, v in properties['shapes'].items()]
       size_mapping = list(properties['sizes'].items())
-
-    shape_color_combos = None
-    if args.shape_color_combos_json is not None:
-      with open(args.shape_color_combos_json, 'r') as f:
-        shape_color_combos = list(json.load(f).items())
-    
+     
     # Add individual objects
     blender_objects = []
     for obj_struct in objects:
         r = properties['sizes'][obj_struct['size']]
-        rgba = properties['colors'][obj_struct['color']]
+        rgba = color_name_to_rgba[obj_struct['color']]
         obj_name = properties['shapes'][obj_struct['shape']]
         theta = obj_struct['rotation']
-        xyz = obj_struct['3d_coords']
+        (x, y, z) = obj_struct['3d_coords']
+        
+        # For cube, adjust the size a bit
+        if obj_name == 'Cube':
+          r /= math.sqrt(2)
         
         # Actually add the object to the scene
-        utils.add_object(args.shape_dir, obj_name, r, loc=None, theta=theta, xyz=xyz)
+        utils.add_object(args.shape_dir, obj_name, r, (x, y), theta=theta)
         obj = bpy.context.object
-        blender_objects.append(obj) 
+        blender_objects.append(obj)
         
-        # Attach the material
-        mat_name = properties['materials'][obj_struct['material']]
+        # Attach a random material
+        mat_name =  properties['materials'][obj_struct['material']]
         utils.add_material(mat_name, Color=rgba)
     return objects, blender_objects
+
+def get_metadata_from_question_file(args, candidate_question_file):
+    """
+    Returns (split, class) from the {PREFIX}_{SPLIT}_{QUESTION_CLASS}.json file
+    """
+    split_question_file = candidate_question_file.split("_")
+    assert split_question_file[0] == DEFAULT_CLEVR_PREFIX
+    dataset_split = split_question_file[1]
+    assert dataset_split  in DATASET_SPLIT_NAMES
+    question_class = "_".join(split_question_file[2:]).split(".json")[0]
+    return dataset_split, question_class
     
-def main(args):
-    num_digits = 6
-    prefix = '%s_' % (args.input_questions_file) 
-    img_answer_template = '%s%%0%dd_answer_%%d.png' % (prefix, num_digits)
-    img_answer_template = os.path.join(args.output_image_dir, args.input_questions_file, img_answer_template)
-    
-    img_input_template = '%s%%0%dd_input_%%d.png' % (prefix, num_digits)
-    img_input_template = os.path.join(args.output_image_dir, args.input_questions_file, img_answer_template)
-    
-    if not os.path.isdir(args.output_image_dir):
-        print("Making directory: %s "% (args.output_image_dir))
-        os.makedirs(args.output_image_dir)
-    
-    input_fn = os.path.join(args.input_questions_dir, args.input_questions_file + '.json')
-    with open(input_fn, 'r') as f:
+def get_questions_to_render_for_template(args, question_file):
+    """Loads the questions for a given file and samples only a few per template if need be."""
+    with open(question_file, 'r') as f:
         questions = json.load(f)
+        
     # Find the scenes that we will be rendering for.
     template_to_questions = defaultdict(list)
     for q in questions['questions']:
-        template_idx = "%s_%s" % (q['template_filename'], q['template_index'])
-        template_to_questions[template_idx].append(q['question_index'])
+        if type(q['answers'][0]) == type(dict()):
+            template_idx = "%s_%s" % (q['template_filename'], q['template_index'])
+            template_to_questions[template_idx].append(q)
     # Scenes per template
     qs_per_template = {
-        template_idx : random.sample(template_to_questions[template_idx], args.num_questions_per_template)
+        template_idx : random.sample(template_to_questions[template_idx], args.num_questions_per_template if args.num_questions_per_template > 0 else len(template_to_questions[template_idx]))
         for template_idx in template_to_questions
     }
-    print("Found %d templates, rendering %d questions per template" % (len(qs_per_template), args.num_questions_per_template))
+    print("For question file : %s, found a total of %d templates. Rendering up to %d questions per template" % (question_file, len(qs_per_template), args.num_questions_per_template))
+    return qs_per_template
 
+    
+def get_all_questions_for_templates(args):
+    """Loads all the questions for the templates, sampling a limited subset if applicable.
+    Returns a dict of the form: {
+        question_input_file : [
+            'questions_to_render' : {
+                question_template_idx : [list of questions]
+            'split' : split,
+            'question_class' : question_class
+            }
+        ]
+    }"""
+    question_files_to_questions_to_render = dict()
+    
+    candidate_question_files = [candidate_file for candidate_file in os.listdir(args.input_questions_dir) if candidate_file.endswith(".json")]
+    for candidate_question_file in candidate_question_files:
+        (dataset_split, question_class) = get_metadata_from_question_file(args, candidate_question_file)
+        if dataset_split in args.splits and question_class in args.question_templates:
+            full_question_filepath = os.path.join(args.input_questions_dir, candidate_question_file)
+            questions_to_render = get_questions_to_render_for_template(args, full_question_filepath)
+            question_files_to_questions_to_render[full_question_filepath] = {
+                QUESTIONS_TO_RENDER_TAG : questions_to_render,
+                SPLIT_TAG : dataset_split,
+                QUESTION_CLASS_TAG : question_class
+            }
+    return question_files_to_questions_to_render
+            
+def get_all_output_dirs_for_question_files(args, questions_to_render):
+    """Creates all of the output directories for the corresponding question templates.
+    Modifies: questions_to_render
+    """
+    for question_file in questions_to_render:
+        split, dataset_name = questions_to_render[question_file][SPLIT_TAG], questions_to_render[question_file][QUESTION_CLASS_TAG]
+        output_directory = os.path.join(args.output_image_dir, dataset_name, split)
+        pathlib.Path(output_directory).mkdir(parents=True, exist_ok=True)
+        questions_to_render[question_file][OUTPUT_DIR_TAG] = output_directory
+    return questions_to_render
 
-    # Render scenes.
-    questions_log = ""
-    text_questions = {}
-    for i, template_idx in enumerate(qs_per_template):
-        for j, q_idx in enumerate(qs_per_template[template_idx]):
-            print("Now on scene %d / %d of %d / %d templates" % (
-                (j+1),
-                len(qs_per_template[template_idx]),
-                (i+1), 
-                len(qs_per_template)
-            ))
-            question = questions['questions'][q_idx]
-            if type(question['answers'][0]) is not dict:
-                continue
-            print("...found answer templates to render.")
-            print("Rendering for: %s" %  question['question'])
-            # For convenience, we will store and log the text questions
-            text_questions[q_idx] = question['question']
-            questions_log += "INDEX, %d,\n" % q_idx
-            questions_log += "QUESTION,"+question['question'][0] + "\n"
-            
-            # if args.render_inputs:
-            #     # Find and render the input scenes.
-            #     img_path = img_input_template % (q_idx, k)
-            #     questions_log += "IMG_INPUT,%s\n" % os.path.basename(img_path)
-            
-            for k, scene in enumerate(question['answers']):
-                img_path = img_answer_template % (q_idx, k)
-                questions_log += "IMG_ANSWER,%s\n" % os.path.basename(img_path)
-                render_scene(args,
-                            scene,
-                            question_index=q_idx,
-                            answer_index=k,
-                            output_img=img_path)
-                if k > 0: break
-            
+def get_image_scene_file_name_templates(args, questions_to_render):
+    """
+    Creates the standardized template naming convention for the output images, which will be updated for the corresponding scenes, of the form: DIR/{question_template}/{question_template}_{question}_answer_{answer_number}.png
+    Mutates: questions_to_render
+    """
+    num_digits_in_filename = 6
+    for question_file in questions_to_render:
+        split, dataset_name = questions_to_render[question_file][SPLIT_TAG], questions_to_render[question_file][QUESTION_CLASS_TAG]
+        output_directory = questions_to_render[question_file][OUTPUT_DIR_TAG]
+        prefix = '%s_%s_%s' % (DEFAULT_CLEVR_PREFIX, split, dataset_name)
+        
+        img_answer_template = '%s%%0%dd_answer_%%d.png' % (prefix, num_digits_in_filename)
+        img_answer_template = os.path.join(output_directory, img_answer_template)
+    
+        img_input_template = '%s%%0%dd_input_%%d.png' % (prefix, num_digits_in_filename)
+        img_input_template = os.path.join(output_directory, img_input_template)
+        questions_to_render[question_file][ANSWER_IMAGE_FILENAME_TEMPLATE_TAG] = img_answer_template
+        questions_to_render[question_file][INPUT_IMAGE_FILENAME_TEMPLATE_TAG] = img_input_template
+    return questions_to_render
 
+def iteratively_render_all_scenes(args, questions_to_render):
+    for question_file in questions_to_render:
+        task_name_to_images = defaultdict(list)
+        question_class = questions_to_render[question_file][QUESTION_CLASS_TAG]
+        questions_per_template_for_class = questions_to_render[question_file][QUESTIONS_TO_RENDER_TAG]
+        img_answer_template = questions_to_render[question_file][ANSWER_IMAGE_FILENAME_TEMPLATE_TAG]
+        for i, template_idx in enumerate(questions_per_template_for_class):
+            for j, question_object in enumerate(questions_per_template_for_class[template_idx]):
+                print("Now on scene %d / %d of %d / %d templates\n" % (
+                    (j+1),
+                    len(questions_per_template_for_class[template_idx]),
+                    (i+1), 
+                    len(questions_per_template_for_class)
+                ))
+                question_text = question_object['question']
+                task_name = "%d-%s-%s" % (question_object['question_index'], question_class, question_text)
+                print("Rendering for: %s" %  question_text)
+                
+                for k, scene in enumerate(question_object['answers'][:args.num_scenes_per_question]):
+                    img_path = img_answer_template % (question_object['question_index'], k)
+                    render_scene(args,
+                                scene,
+                                question_index=question_object['question_index'],
+                                answer_index=k,
+                                output_img=img_path)
+                    base_name = os.path.basename(img_path)
+                    task_name_to_images[task_name].append(base_name)
+        output_dir = questions_to_render[question_file][OUTPUT_DIR_TAG]
+        write_out_rendered_image_file(args, output_dir, task_name_to_images)
+
+def write_out_rendered_image_file(args, output_dir, task_name_to_images):
+    """Writes out the JSON file containing the image filenames."""
+    output_filename= os.path.join(output_dir, OUTPUT_IMAGE_DICT_FILENAME)
+    with open(output_filename, 'w') as f:
+        json.dump(task_name_to_images, f)   
+
+def main(args):
+    questions_to_render = get_all_questions_for_templates(args)
+    questions_to_render =  get_all_output_dirs_for_question_files(args, questions_to_render)
+    questions_to_render = get_image_scene_file_name_templates(args, questions_to_render)
+    iteratively_render_all_scenes(args, questions_to_render)
 if __name__ == '__main__':
   if INSIDE_BLENDER:
     # Run normally

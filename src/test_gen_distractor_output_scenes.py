@@ -15,7 +15,7 @@ def set_random_seed():
 def get_default_all_scenes():
     mock_args = MockArgs(default_train_scenes=True,
     default_val_scenes=False)
-    all_scenes = to_test.get_input_scenes(mock_args)
+    all_scenes['train'] = to_test.get_input_scenes(mock_args)
     return all_scenes
 
 def get_default_localization_object():

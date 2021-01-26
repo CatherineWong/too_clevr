@@ -2,7 +2,7 @@
 gen_dataset_subset.py | Author : Catherine Wong
 Utility file for generating subsets of existing datasets satisfying key properties for various experiments.
 A common usecase is to generate a subset of a dataset only containing questions satisfying a specific set of return properties.
-
+Also sorts questions pre-emptively by sentence length within class.
 Example usage:
     gen_dataset_subset.py 
         --input_questions_directory DIRECTORY

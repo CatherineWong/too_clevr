@@ -32,6 +32,8 @@ TRANSLATION_FN_REGISTRY = {
     "1_single_or" : artificial_language_utils.translate_single_or_text,
     "1_zero_hop" : artificial_language_utils.translate_zero_hop_text,
     "1_one_hop" : artificial_language_utils.translate_one_hop_text,
+    "1_zero_hop_no_string" : artificial_language_utils.translate_zero_hop_text,
+    "1_one_hop_no_string" : artificial_language_utils.translate_one_hop_text,
     "1_same_relate_restricted" : artificial_language_utils.translate_same_relate_restricted_text,
 }
 

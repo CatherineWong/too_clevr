@@ -68,6 +68,8 @@ parser.add_argument('--splits',
                     help='Which splits to generate for.')
 parser.add_argument("--num_scenes_per_question", default=3, type=int,
                     help="The maximum number of scenes we render per question..")
+parser.add_argument("--start_at_scene", default=3, type=int,
+                                        help="Which scene to start at, if we have already rendered some.")
 parser.add_argument("--num_questions_per_template", default=1, type=int,
                     help="The number of questions to render answer scene images for. If -1, we render all of the questions for a given template.")
 parser.add_argument("--render_inputs", default=1, type=int,
@@ -358,6 +360,7 @@ def iteratively_render_all_scenes(args, questions_to_render):
                 print("Rendering for: %s" %  question_text)
                 
                 for k, scene in enumerate(question_object['answers'][:args.num_scenes_per_question]):
+                    if k < args.start_at_scene: continue
                     img_path = img_answer_template % (question_object['question_index'], k)
                     render_scene(args,
                                 scene,

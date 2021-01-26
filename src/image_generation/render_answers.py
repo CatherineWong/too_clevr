@@ -46,6 +46,7 @@ OUTPUT_DIR_TAG = 'output_dir'
 ANSWER_IMAGE_FILENAME_TEMPLATE_TAG  = 'answer_image_filename'
 INPUT_IMAGE_FILENAME_TEMPLATE_TAG  = 'input_image_filename'
 OUTPUT_IMAGE_DICT_FILENAME = "output_images.json"
+DISTRACTOR_IMAGE_DICT_FILENAME = "distractor_images.json"
 
 DEFAULT_IMAGE_DATA_DIR = "/Users/catwong/Desktop/zyzzyva/code/too_clevr/metadata/clevr_shared_metadata/image_generation_data"
 DEFAULT_BLEND_FILE = "base_scene.blend"
@@ -74,6 +75,8 @@ parser.add_argument("--num_questions_per_template", default=1, type=int,
                     help="The number of questions to render answer scene images for. If -1, we render all of the questions for a given template.")
 parser.add_argument("--render_inputs", default=1, type=int,
                     help="Also re-render the inputs. [Not yet implemented]")
+parser.add_argument("--render_distractors", action='store_true',
+                    help="Only render the distractors. [Not yet implemented]")
 
 # Scene storage settings.   
 parser.add_argument('--input_questions_dir', default=os.path.join(DEFAULT_TOP_LEVEL_CLEVER_DATA_DIR, DEFAULT_DATASET_DIR, DEFAULT_QUESTIONS_DIR),
@@ -341,6 +344,10 @@ def get_image_scene_file_name_templates(args, questions_to_render):
         questions_to_render[question_file][INPUT_IMAGE_FILENAME_TEMPLATE_TAG] = img_input_template
     return questions_to_render
 
+def add_distractor_to_image_path(img_path, distractor_idx):
+    basename = img_path.split(".png")[0]
+    basename += "_distractor_" + str(distractor_idx)
+    return basename + ".png"
 def iteratively_render_all_scenes(args, questions_to_render):
     for question_file in questions_to_render:
         task_name_to_images = defaultdict(list)
@@ -362,11 +369,23 @@ def iteratively_render_all_scenes(args, questions_to_render):
                 for k, scene in enumerate(question_object['answers'][:args.num_scenes_per_question]):
                     if k < args.start_at_scene: continue
                     img_path = img_answer_template % (question_object['question_index'], k)
-                    render_scene(args,
-                                scene,
-                                question_index=question_object['question_index'],
-                                answer_index=k,
-                                output_img=img_path)
+                    
+                    if args.render_distractors:
+                        if k < len(question_object['distractors']):
+                            distractors_for_answer = question_object['distractors'][k]
+                            for distractor_idx, distractor_scene in enumerate(distractors_for_answer):
+                                img_path = add_distractor_to_image_path(img_path, distractor_idx)
+                                render_scene(args,
+                                            distractor_scene,
+                                            question_index=question_object['question_index'],
+                                            answer_index=k,
+                                            output_img=img_path)
+                    else:
+                        render_scene(args,
+                                    scene,
+                                    question_index=question_object['question_index'],
+                                    answer_index=k,
+                                    output_img=img_path)
                     base_name = os.path.basename(img_path)
                     task_name_to_images[task_name].append(base_name)
         output_dir = questions_to_render[question_file][OUTPUT_DIR_TAG]
@@ -374,6 +393,7 @@ def iteratively_render_all_scenes(args, questions_to_render):
 
 def write_out_rendered_image_file(args, output_dir, task_name_to_images):
     """Writes out the JSON file containing the image filenames."""
+    output_filename = OUTPUT_IMAGE_DICT_FILENAME if not args.render_distractors else DISTRACTOR_IMAGE_DICT_FILENAME
     output_filename= os.path.join(output_dir, OUTPUT_IMAGE_DICT_FILENAME)
     with open(output_filename, 'w') as f:
         json.dump(task_name_to_images, f)   

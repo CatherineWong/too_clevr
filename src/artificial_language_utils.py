@@ -228,7 +228,8 @@ def rearrange_and_remove_anaphora(text):
             text = text[:-(len(anaphora))]
             question_word = "what" if "what" in text else "how"
             split_text = text.split(question_word)
-            assert len(split_text) == 2
+            if not len(split_text) == 2:
+                import pdb; pdb.set_trace()
             prefix = split_text[0]
             prefix = prefix.replace("there is a", "")
             text = question_word + " " + split_text[1] + " " + prefix

@@ -5,3 +5,4 @@ data/clevr_dreams*
 data/clevr_humans
 data/clevr_no_images
 data/clevr_icml_2021/images
+data/clevr_icml_2021_no_string/images
